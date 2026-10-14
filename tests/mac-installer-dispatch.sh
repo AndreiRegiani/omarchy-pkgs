@@ -21,6 +21,7 @@ if [[ " $* " == *" -X POST "* ]]; then
   printf '%s' "${STUB_STATUS:-204}"
 else
   [[ ${STUB_DB:-ok} == fail ]] && exit 22
+  printf '%s\n' "$@" > "$STUB_DIR/get-args"
   printf 'edge database bytes'
 fi
 STUB
@@ -56,6 +57,8 @@ out=$(run --dry-run)
 [[ $(jq -c .source <<<"$out") == '{"repository":"omacom/omarchy-pkgs","commit":"abc123","run":"https://github.com/omacom/omarchy-pkgs/actions/runs/42"}' ]] \
   && pass "the payload names the commit and run that published" || fail "source: $out"
 [[ ! -e $T/post-args ]] && pass "a dry run sends nothing" || fail "dry run posted"
+grep -qE '^https://pkgs\.omarchy\.org/edge/aarch64/omarchy\.db\?[0-9]+$' "$T/get-args" && grep -qx 'Cache-Control: no-cache' "$T/get-args" \
+  && pass "the database is read past the CDN's cache" || fail "database url: $(cat "$T/get-args")"
 
 out=$(STUB_DB=fail run --dry-run)
 [[ $(jq 'has("database_sha256")' <<<"$out") == false ]] \
@@ -67,6 +70,8 @@ out=$(MAC_INSTALLER_DISPATCH_TOKEN=secret-token run)
 grep -qx 'https://api.github.com/repos/omacom/omarchy-mac-installer/dispatches' "$T/post-args" \
   && pass "it posts to omarchy-mac-installer's dispatches endpoint" || fail "url: $(cat "$T/post-args")"
 [[ $(jq -r .event_type "$T/post-body") == edge-mac-changed && $(jq -r '.client_payload.packages | length' "$T/post-body") == 3 ]] \
+  && [[ $(jq -r '.client_payload.database_sha256' "$T/post-body") == "$DB_SHA" ]] \
+  && [[ $(jq -r '[.client_payload.packages[].name] | join(" ")' "$T/post-body") == "asdcontrol linux-aurora omarchy-settings-dev" ]] \
   && pass "the event is edge-mac-changed with the payload" || fail "body: $(cat "$T/post-body")"
 ! grep -q secret-token "$T/post-args" && grep -q 'Bearer secret-token' "$T/post-stdin" \
   && pass "the token reaches curl on stdin, never its arguments" || fail "token handling"
@@ -83,6 +88,10 @@ out=$(MAC_INSTALLER_DISPATCH_TOKEN= run) && [[ $out == *"::notice"*"not set"* &&
 record live "$(slot edge x86_64 published linux-aurora-7.1.12.aurora2-12-x86_64)" "$(slot stable aarch64 published walker-2.17.2-1-aarch64)"
 out=$(MAC_INSTALLER_DISPATCH_TOKEN=secret-token run) && [[ $out == *"nothing was published into edge/aarch64"* && ! -e $T/post-args ]] \
   && pass "an x86_64-only (or non-edge) publish sends nothing" || fail "x86_64 only: $out"
+
+record live "$(slot edge aarch64 published linux-aurora-7.1.12.aurora2-12-aarch64)" "$(slot rc x86_64 failed walker-2.17.2-1-x86_64)"
+out=$(MAC_INSTALLER_DISPATCH_TOKEN=secret-token run) && [[ $(jq -r '[.client_payload.packages[].name] | join(" ")' "$T/post-body") == linux-aurora ]] \
+  && pass "a later failed slot does not hold back a published edge/aarch64 slot" || fail "later failure: $out"
 
 record live "$(slot edge aarch64 failed linux-aurora-7.1.12.aurora2-12-aarch64)"
 out=$(MAC_INSTALLER_DISPATCH_TOKEN=secret-token run) && [[ ! -e $T/post-args ]] \

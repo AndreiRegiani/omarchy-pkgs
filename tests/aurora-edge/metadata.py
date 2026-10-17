@@ -108,6 +108,7 @@ class EdgeMetadataTests(unittest.TestCase):
             new = prefix + package['pkgver'][0] + '-' + package['pkgrel'][0]
             self.assertGreater(int(subprocess.check_output(['vercmp', new, old], text=True)), 0)
         self.assertEqual(srcinfo('mesa-aurora')['mesa-aurora']['epoch'], ['1'])
+        self.assertNotIn('epoch', srcinfo('linux-aurora')['linux-aurora'])
 
     def test_aura_independent_version_satisfies_legacy_kernel_dependency(self):
         package = srcinfo('aura')['aura']

@@ -44,7 +44,29 @@ class KernelRecipeTests(unittest.TestCase):
             if line.startswith('CONFIG_'):
                 name = line.split('=', 1)[0]
                 self.assertNotIn('\n' + name + '=', original, 'Neo fragment overrides shared setting')
+                self.assertNotIn('# ' + name + ' is not set', original, 'Neo fragment flips shared disabled setting')
         self.assertIn('CONFIG_MT7932_FULLMAC=m', fragment)
+
+    def test_generated_release_keeps_boot_bundle_suffix(self):
+        recipe = ROOT / 'pkgbuilds/linux-aurora/PKGBUILD'
+        for release, expected in [('7.1.12-6-2-ARCH', 0), ('7.1.12-6-2-aurora', 1),
+                                  ('7.1.12-6-2-ARCH-extra', 1), ('', 1)]:
+            with self.subTest(release=release):
+                result = shell('source "$1"; _check_kernelrelease "$2"', recipe, release)
+                self.assertEqual(result.returncode, expected, result.stderr)
+        self.assertIn('_check_kernelrelease "$(<build/base/version)"', recipe.read_text())
+
+    def test_shared_capabilities_are_explicit_and_separate_from_neo_drivers(self):
+        package = ROOT / 'pkgbuilds/linux-aurora'
+        common = (package / 'common.config').read_text()
+        expected = {'CONFIG_SERIAL_APPLE_DOCKCHANNEL', 'CONFIG_SERIAL_APPLE_DOCKCHANNEL_EARLYCON',
+                    'CONFIG_SYSFB_SIMPLEFB', 'CONFIG_DMABUF_HEAPS', 'CONFIG_DMABUF_HEAPS_SYSTEM',
+                    'CONFIG_UDMABUF', 'CONFIG_THERMAL_NETLINK', 'CONFIG_NVME_HWMON', 'CONFIG_TRUSTED_KEYS'}
+        self.assertEqual({line.split('=', 1)[0] for line in common.splitlines()
+                          if line.startswith('CONFIG_')}, expected)
+        recipe = (package / 'PKGBUILD').read_text()
+        self.assertIn('../common.config ../neo.config', recipe)
+        self.assertIn('python3 ../validate-config.py ../common.config build/base/.config', recipe)
 
     def test_generated_config_must_keep_every_requested_capability(self):
         validator = ROOT / 'pkgbuilds/linux-aurora/validate-config.py'

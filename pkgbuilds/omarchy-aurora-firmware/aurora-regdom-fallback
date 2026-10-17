@@ -41,14 +41,21 @@ trap 'kill "$watcher" 2>/dev/null || true' EXIT
 iw reg reload
 [[ ! -x /usr/bin/set-wireless-regdom ]] || /usr/bin/set-wireless-regdom
 fall_back
+next_reconcile=$((SECONDS + 5))
 while kill -0 "$watcher" 2>/dev/null; do
-  if IFS= read -r -t 5 -u "$events" line; then
+  # Unrelated events must not reset the readback deadline: a busy stream can
+  # otherwise hide the missed country hint indefinitely.
+  if (( SECONDS >= next_reconcile )); then
+    fall_back
+    next_reconcile=$((SECONDS + 5))
+  fi
+  remaining=$((next_reconcile - SECONDS))
+  (( remaining > 0 )) || continue
+  if IFS= read -r -t "$remaining" -u "$events" line; then
     [[ $line != *"regulatory domain change"* ]] || fall_back
   else
     status=$?
-    if (( status > 128 )); then
-      fall_back
-    else
+    if (( status <= 128 )); then
       break
     fi
   fi

@@ -153,6 +153,45 @@ class FirmwareTests(unittest.TestCase):
             self.assertEqual((root / 'calls').read_text().splitlines(), ['fallback'])
             self.assertEqual((root / 'country').read_text().strip(), '00')
 
+    def test_busy_unrelated_events_cannot_starve_country_readback(self):
+        script = ROOT / 'pkgbuilds/omarchy-aurora-firmware/aurora-regdom-fallback'
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'country').write_text('00')
+            iw = root / 'iw'
+            iw.write_text('''#!/bin/bash
+case "$*" in
+  event)
+    sleep 0.2
+    echo PL > "$FIXTURE/country"
+    until [[ -e $FIXTURE/calls ]]; do
+      echo 'unrelated scan event'
+      sleep 0.02
+    done
+    exit 0 ;;
+  'reg reload') exit 0 ;;
+  'reg get') printf 'country %s:\\n' "$(cat "$FIXTURE/country")" ;;
+  'reg set 00') echo 00 > "$FIXTURE/country"; echo fallback >> "$FIXTURE/calls" ;;
+  *) exit 99 ;;
+esac
+''')
+            iw.chmod(0o755)
+            code = script.read_text().replace('/usr/bin/set-wireless-regdom', str(root / 'no-host-helper'))
+            process = subprocess.Popen(['bash', '-c', code], text=True, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, start_new_session=True,
+                env=dict(os.environ, PATH=str(root) + ':' + os.environ['PATH'], FIXTURE=str(root),
+                         AURORA_REGDOM_POLICY_DIR=str(root / 'policy')))
+            try:
+                stdout, stderr = process.communicate(timeout=8)
+            except subprocess.TimeoutExpired:
+                import signal
+                os.killpg(process.pid, signal.SIGKILL)
+                process.communicate()
+                self.fail('unrelated events starved the five-second readback deadline')
+            self.assertNotEqual(process.returncode, 0, 'systemd must restart the ended event stream')
+            self.assertEqual((root / 'calls').read_text().splitlines(), ['fallback'], stdout + stderr)
+            self.assertEqual((root / 'country').read_text().strip(), '00')
+
     def test_external_hints_are_rate_limited_and_world_does_not_loop(self):
         path = ROOT / 'pkgbuilds/omarchy-aurora-firmware/aurora-regdom-fallback'
         # Source only the function/state; no live iw process or regulatory change.

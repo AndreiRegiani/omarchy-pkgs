@@ -1,6 +1,6 @@
 pkgname=omarchy-aurora-firmware
 pkgver=20261014
-pkgrel=3
+pkgrel=4
 pkgdesc='Order Apple peripheral admission after device firmware extraction'
 arch=('aarch64')
 groups=('omarchy-platform-apple-silicon')
@@ -20,7 +20,7 @@ sha256sums=('e6338787cc03c7704589df20f7551ac17bc2ae25aa2f8df3b6d9532a1c5b79f9'
             '8ef54ee9d0f438864f2a99bbb8c0cf53aa8b7e0e217bd74b2fd324ff0b882a32'
             '298c2abc4c0e11ab03470209b4ff93c184eed40d3cf9e1913e41ba0ea0179837'
             'e200d1cf003d60eca4a825aec9475f36dd8db6a5a8805eaac93e3fecfa0b3cb0'
-            'decec60daf843a07c6281433cff4569d1d02c48a15198d3ebdfd8e06445d2d31'
+            '6820bedc602cc1f511d748626db85b8ae8951bc7c33d733f05130d31b3ba2091'
             '5aeb12c046553b53e5edd75a7c94a082e8c4edc4ee1226f5163d5ce9774f4d3c'
             '3b994ae27fd1a14ccd569cfc103b205807fe262fe2487446de02d870455e1ec8')
 package() {

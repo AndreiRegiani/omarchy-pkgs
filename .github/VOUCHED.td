@@ -14,6 +14,7 @@
 #   -github:username reason for denouncement
 #
 # Keep entries sorted alphabetically.
+github:birkskyum
 github:bjarneo
 github:DanWahlin
 github:dhh

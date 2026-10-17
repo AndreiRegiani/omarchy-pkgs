@@ -9,7 +9,7 @@ groups=('omarchy-platform-apple-silicon')
 url='https://github.com/aurora-silicon/mesa'
 license=('MIT')
 _commit=af3d9c6fc84f6e5bc6ee23f1eb0b47a5ee466826
-# Matched to the DRM UAPI in linux aurora-wip-rebase.
+# Matched to the DRM UAPI in omacom/linux-aurora integration/aurora.
 # The drivers link neither LLVM nor SPIRV-Tools. Arch Linux ARM moves both
 # (llvm-libs changes soname every major, SPIRV-Tools has no versioned soname),
 # and a Mesa linked to the old ones leaves the Neo without a GPU until this

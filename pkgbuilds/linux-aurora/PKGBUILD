@@ -11,7 +11,7 @@
 epoch=1
 _auroraver=7.1.12
 _aurorarel=6
-pkgrel=1
+pkgrel=2
 
 # Immutable pin on aurora-silicon/linux (branch aurora-wip-rebase). Every bump is a
 # PR that moves _commit; its cold-boot qualification is recorded in
@@ -97,7 +97,9 @@ prepare() {
   # Keep shared kexec support: at this pin Neo radio admission acquires the
   # kernel kexec blocker before retaining DMA/firmware ownership. Both kexec
   # load APIs and execution reject while that blocker is held.
-  scripts/config --file build/base/.config --set-str LOCALVERSION "$_kernelname" --disable LOCALVERSION_AUTO
+  # Keep config's -ARCH suffix: omarchy-mac-boot and update-m1n1 discover
+  # device trees under /lib/modules/*-ARCH.
+  scripts/config --file build/base/.config --disable LOCALVERSION_AUTO
   _make O="$PWD/build/base" olddefconfig
   python3 ../validate-config.py ../neo.config build/base/.config
   grep -qx 'CONFIG_RUST=y' build/base/.config || {

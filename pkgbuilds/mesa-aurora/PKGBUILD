@@ -19,7 +19,7 @@ makedepends=('git' 'meson' 'ninja' 'python-mako' 'python-yaml' 'python-packaging
              'rust-bindgen' 'clang' 'llvm' 'libclc' 'spirv-llvm-translator' 'spirv-tools'
              'cbindgen' 'glslang' 'libdrm' 'expat' 'libglvnd'
              'libx11' 'libxcb' 'libxext' 'libxfixes' 'libxrandr' 'libxshmfence' 'libxxf86vm'
-             'wayland' 'wayland-protocols' 'vulkan-headers' 'libdisplay-info'
+             'wayland' 'wayland-protocols' 'vulkan-headers' 'vulkan-icd-loader' 'libdisplay-info'
              'lm_sensors' 'zlib' 'zstd' 'xcb-util-keysyms')
 source=("mesa::git+$url.git#commit=$_commit"
         0001-hk-preserve-library-assertion-mode-in-test.patch)

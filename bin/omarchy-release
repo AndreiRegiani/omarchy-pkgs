@@ -206,6 +206,22 @@ stable_mirror_matches_rc() {
   [[ $rc == "$stable" ]]
 }
 
+# What to run on the mirror host when the stamps differ. Usually stable is
+# behind and takes rc's snapshot. When stable is already newer (it was
+# re-staged from upstream before omarchy-mirror#8), copying rc over it would
+# roll stable users' Arch packages back, so rc takes stable's snapshot instead
+# and is tested on it. An unreadable stamp suggests no copy at all.
+mirror_sync_hint() {
+  local rc="$1" stable="$2"
+  if [[ ! $rc =~ ^[0-9]+$ || ! $stable =~ ^[0-9]+$ ]]; then
+    echo "Check that rc-mirror and stable-mirror both answer /lastsync, then ship again"
+  elif ((stable > rc)); then
+    echo "Stable is newer than rc, so copying rc to stable would roll it back. Run omarchy-mirror-sync-rc-from-stable on the mirror host, test rc on that snapshot, then ship again"
+  else
+    echo "Run omarchy-mirror-sync-stable-from-rc on the mirror host, then ship again"
+  fi
+}
+
 # Prints omarchy's published version in a channel; empty when absent, rc 2 when
 # the database cannot be read (callers must not mistake an outage for absence).
 published_version() {
@@ -842,7 +858,7 @@ cmd_ship() {
       rc_sync=$(mirror_lastsync "$RC_ARCH_MIRROR") || rc_sync=unreadable
       stable_sync=$(mirror_lastsync "$STABLE_ARCH_MIRROR") || stable_sync=unreadable
       print_error "3/7 The stable Arch mirror does not serve rc's snapshot yet (lastsync: rc $rc_sync, stable $stable_sync)"
-      print_info "Run omarchy-mirror-sync-stable-from-rc on the mirror host, then ship again"
+      print_info "$(mirror_sync_hint "$rc_sync" "$stable_sync")"
       exit 1
     fi
     print_success "3/7 The stable Arch mirror serves rc's snapshot"
@@ -1104,6 +1120,9 @@ cmd_self_test() {
   expect "mirror on another snapshot blocks" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "blocked"
   TEST_STABLE_SYNC=""
   expect "unreadable mirror blocks" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "blocked"
+  expect "stable ahead of rc is not rolled back" "$(mirror_sync_hint 1792185002 1792286001 | grep -o 'omarchy-mirror-sync-[a-z-]*')" "omarchy-mirror-sync-rc-from-stable"
+  expect "an unreadable mirror suggests no copy" "$(mirror_sync_hint 1792185002 unreadable | grep -o 'omarchy-mirror-sync-[a-z-]*' || echo none)" "none"
+  expect "stable behind rc takes rc's snapshot" "$(mirror_sync_hint 1792286001 1792185002 | grep -o 'omarchy-mirror-sync-[a-z-]*')" "omarchy-mirror-sync-stable-from-rc"
   echo ""
   if ((failures == 0)); then
     print_success "Self-test passed"

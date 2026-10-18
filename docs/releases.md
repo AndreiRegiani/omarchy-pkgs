@@ -45,7 +45,11 @@ a commit no RC was cut from. It also waits for the Arch mirror: stable
 packages are only promoted once `stable-mirror.omarchy.org` serves the
 snapshot rc was tested on (the two `lastsync` stamps match). On release day,
 run `omarchy-mirror-sync-stable-from-rc` on the mirror host first (see
-omacom/omarchy-mirror), then `ship`. One exception: `ship` carries on past a failed
+omacom/omarchy-mirror), then `ship`. If stable is already newer than rc,
+`ship` says so: copying rc over stable would roll stable back, so run
+`omarchy-mirror-sync-rc-from-stable` instead and test rc on that snapshot
+before shipping. A patch release can start that way, so it ships without
+moving stable's Arch packages. One exception: `ship` carries on past a failed
 ISO or website step, and a later `ship` exits once stable holds the version
 and the GitHub release exists. Finish a failed ISO or website step by hand.
 

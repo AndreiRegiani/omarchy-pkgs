@@ -4,7 +4,7 @@
 pkgname=grok-bot
 pkgver=0.71.2
 pkgrel=1
-_commit=52da656f56d317510ca65ad6af3d69a2cde461e0
+_commit=92808c0ad869b2e3725dbc3b8fa2fcc991687502
 pkgdesc='Grok Bot desktop agent'
 arch=('x86_64' 'aarch64')
 url='https://x.ai/bot'

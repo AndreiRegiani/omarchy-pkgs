@@ -45,3 +45,8 @@ plan --channels "stable" 'bad name' >/dev/null && fail "a bad package name was a
 pass "a bad package name is refused"
 plan --channels >/dev/null && fail "a bare --channels was accepted"
 pass "a bare --channels is refused"
+
+recipe broken "x86_64 aarch64"
+sed -i '1i return 1' "$T/pkgbuilds/broken/PKGBUILD"
+plan --channels "stable" gone >/dev/null && fail "a plan was made although a PKGBUILD could not be read"
+grep -q "Cannot read pkgbuilds/broken/PKGBUILD" "$T/err" && pass "a PKGBUILD that can't be read stops the plan" || fail "message: $(cat "$T/err")"

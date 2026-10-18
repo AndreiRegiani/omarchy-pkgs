@@ -156,6 +156,15 @@ class QualificationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'not hardware-qualified'):
             self.module.validate(self.record, self.record['source_commit'])
 
+    def test_candidate_build_preserves_unqualified_status_and_checks_identity(self):
+        self.module.validate(self.record, self.record['source_commit'], require_hardware=False)
+        self.assertIs(self.record['hardware_tested'], False)
+        for record, commit in [(self.record, '0' * 40),
+                               (dict(self.record, stage1_auto_enrollment=True), self.record['source_commit']),
+                               (dict(self.record, hardware_tested='false'), self.record['source_commit'])]:
+            with self.subTest(record=record, commit=commit), self.assertRaises(ValueError):
+                self.module.validate(record, commit, require_hardware=False)
+
     def test_exact_pin_and_all_evidence_are_required(self):
         record = dict(self.record, hardware_tested=True)
         with self.assertRaises(ValueError):

@@ -530,7 +530,7 @@ on named packages.
   (`omarchy-dev` and `omarchy-settings-dev`) share a PR, because they move in
   lockstep.
 - **A package with no upstream declaration or hook gets no upstream updates.** That
-  includes the kernels (`linux-omarchy*`, `linux-ptl`, `linux-aurora`): bump
+  includes the kernels (`linux-omarchy*`, `linux-aurora`): bump
   them by PR.
 - A failed run of any of the three posts to Basecamp when
   `BASECAMP_CHATBOT_URL` is set.

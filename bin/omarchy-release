@@ -206,11 +206,11 @@ stable_mirror_matches_rc() {
   [[ $rc == "$stable" ]]
 }
 
-# What to run on the mirror host when the stamps differ. Usually stable is
-# behind and takes rc's snapshot. When stable is already newer (it was
-# re-staged from upstream before omarchy-mirror#8), copying rc over it would
-# roll stable users' Arch packages back, so rc takes stable's snapshot instead
-# and is tested on it. An unreadable stamp suggests no copy at all.
+# What to run on the mirror host when the stamps differ. Normally stable is
+# behind and takes rc's snapshot. Stable newer than rc only happens when it was
+# re-staged from upstream (as before omarchy-mirror#8); copying rc over it
+# would roll stable users' Arch packages back, so rc is repaired with stable's
+# snapshot and tested on it. An unreadable stamp suggests no copy at all.
 mirror_sync_hint() {
   local rc="$1" stable="$2"
   if [[ ! $rc =~ ^[0-9]+$ || ! $stable =~ ^[0-9]+$ ]]; then

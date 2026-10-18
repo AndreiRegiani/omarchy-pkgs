@@ -33,6 +33,22 @@ def srcinfo(name):
 
 
 class EdgeMetadataTests(unittest.TestCase):
+    def test_runtime_only_dependencies_remain_in_packages_not_build_environments(self):
+        expected = {
+            'aura': ['asahi-scripts>=20260127.1', 'uboot-aurora'],
+            'aurora-audio': ['alsa-ucm-conf-aurora', 'pipewire-audio', 'wireplumber',
+                             'bankstown', 'lsp-plugins-lv2', 'speakersafetyd', 'speakerguardd'],
+            'omarchy-aurora-firmware': ['bash', 'iw', 'kmod', 'omarchy-mac-boot',
+                                       'wireless-regdb', 'linux-aurora>=7.1.12.aurora5'],
+        }
+        for name, dependencies in expected.items():
+            with self.subTest(package=name):
+                self.assertEqual(srcinfo(name)[name]['depends'], dependencies)
+                build_dependencies = subprocess.check_output(
+                    ['bash', '-c', 'source "$1"; printf "%s\\n" "${depends[@]}"',
+                     'fixture', str(ROOT / 'pkgbuilds' / name / 'PKGBUILD')], text=True)
+                self.assertEqual(build_dependencies.strip(), '')
+
     def test_local_kernel_and_firmware_inputs_match_recipe_checksums(self):
         for name in ('linux-aurora', 'mesa-aurora', 'omarchy-aurora-firmware'):
             package = next(iter(srcinfo(name).values()))

@@ -7,7 +7,6 @@ groups=('omarchy-platform-apple-silicon')
 license=('MIT')
 backup=('etc/mkinitcpio.conf.d/95-aurora-vendor-order.conf')
 url='https://github.com/aurora-silicon/omarchy-mac'
-depends=('bash' 'iw' 'kmod' 'omarchy-mac-boot' 'wireless-regdb' 'linux-aurora>=7.1.12.aurora5')
 source=(aurora-firmware-order.conf aurora-peripheral-firmware.sh
         aurora-peripheral-firmware.service aurora-vendor-order.install
         95-aurora-vendor-order.conf aurora-vendor-order-cryptsetup.conf
@@ -24,6 +23,8 @@ sha256sums=('e6338787cc03c7704589df20f7551ac17bc2ae25aa2f8df3b6d9532a1c5b79f9'
             '5aeb12c046553b53e5edd75a7c94a082e8c4edc4ee1226f5163d5ce9774f4d3c'
             '3b994ae27fd1a14ccd569cfc103b205807fe262fe2487446de02d870455e1ec8')
 package() {
+  # These services run on the target system; packaging only installs files.
+  depends=('bash' 'iw' 'kmod' 'omarchy-mac-boot' 'wireless-regdb' 'linux-aurora>=7.1.12.aurora5')
   install -Dm644 aurora-firmware-order.conf "$pkgdir/usr/lib/modprobe.d/aurora-firmware-order.conf"
   install -Dm755 aurora-peripheral-firmware.sh "$pkgdir/usr/lib/omarchy/initcpio/aurora-peripheral-firmware.sh"
   install -Dm644 aurora-peripheral-firmware.service "$pkgdir/usr/lib/systemd/system/aurora-peripheral-firmware.service"

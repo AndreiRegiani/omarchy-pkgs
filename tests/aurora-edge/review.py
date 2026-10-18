@@ -20,13 +20,14 @@ class KernelRecipeTests(unittest.TestCase):
     def test_command_line_bindgen_wins_over_kbuild_assignment_in_every_phase(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / 'Makefile').write_text('BINDGEN = ignored-system-bindgen\nprobe:\n\t@echo $(BINDGEN)\n\t@echo $$AURORA_BINDGEN_REAL\n\t@echo $$RUSTUP_TOOLCHAIN\n')
+            (root / 'Makefile').write_text('BINDGEN = ignored-system-bindgen\nprobe:\n\t@echo $(BINDGEN)\n\t@echo $$AURORA_BINDGEN_REAL\n\t@echo $$RUSTUP_TOOLCHAIN\n\t@echo $$RUSTFMT\n')
             recipe = ROOT / 'pkgbuilds/linux-aurora/PKGBUILD'
-            result = shell('source "$1"; srcdir="$2"; _make -s -f "$2/Makefile" probe', recipe, root)
+            result = shell('source "$1"; srcdir="$2"; rustup() { [[ "$*" == "which --toolchain 1.99.0 rustfmt" ]] && echo /qualified/rustfmt; }; _make -s -f "$2/Makefile" probe', recipe, root)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines(), [
                 str(root / 'bindgen-kernel.py'),
-                str(root / 'private-bindgen/rust-bindgen-0.73.2/target/release/bindgen'), '1.85.0'])
+                str(root / 'private-bindgen/rust-bindgen-0.73.2/target/release/bindgen'), '1.85.0',
+                '/qualified/rustfmt'])
 
     def test_shared_config_keeps_existing_machine_behaviour(self):
         package = ROOT / 'pkgbuilds/linux-aurora'

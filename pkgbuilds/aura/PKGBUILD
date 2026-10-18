@@ -12,7 +12,6 @@ _compat=1.6.1.aurora19
 provides=("m1n1=$_compat" "m1n1-aurora=$_compat" "m1n1-neo=$_compat")
 conflicts=('m1n1' 'm1n1-aurora' 'm1n1-neo')
 replaces=('m1n1-neo')
-depends=('asahi-scripts>=20260127.1' 'uboot-aurora')
 makedepends=('git' 'clang' 'lld' 'llvm' 'rustup' 'make' 'python')
 options=('!strip' '!debug')
 source=("aura::git+$url.git#commit=$_commit" build-qualification.json validate-qualification.py)
@@ -32,6 +31,8 @@ build() {
   make -j"${OMARCHY_BUILD_JOBS:-10}" RELEASE=1 CHAINLOADING=1 ESP_STAGE2=1 USE_CLANG=1 BUILTIN_LOGO=aurora
 }
 package() {
+  # Required on the installed system, not to build the bootloader.
+  depends=('asahi-scripts>=20260127.1' 'uboot-aurora')
   python "$srcdir/validate-qualification.py" "$srcdir/build-qualification.json" "$_commit"
   install -Dm644 aura/build/aura.bin "$pkgdir/usr/lib/asahi-boot/m1n1.bin"
   install -d "$pkgdir/usr/lib/m1n1-neo"

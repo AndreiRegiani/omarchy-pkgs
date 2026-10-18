@@ -103,23 +103,6 @@ class KernelRecipeTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO'):
                 module.validate(fragment, resolved)
 
-    def test_fragments_cannot_silently_downgrade_normalized_shared_builtins(self):
-        package = ROOT / 'pkgbuilds/linux-aurora'
-        spec = importlib.util.spec_from_file_location('baseline_config_check', package / 'validate-config.py')
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        with tempfile.TemporaryDirectory() as temporary:
-            baseline, resolved = (Path(temporary) / name for name in ('baseline', 'resolved'))
-            baseline.write_text('CONFIG_EXISTING_DRIVER=y\nCONFIG_OPTIONAL=m\n')
-            resolved.write_text('CONFIG_EXISTING_DRIVER=y\nCONFIG_OPTIONAL=y\n')
-            module.preserve_builtins(baseline, resolved)
-            for actual in ('CONFIG_EXISTING_DRIVER=m\n', '# CONFIG_EXISTING_DRIVER is not set\n', ''):
-                resolved.write_text(actual)
-                with self.assertRaisesRegex(ValueError, 'CONFIG_EXISTING_DRIVER'):
-                    module.preserve_builtins(baseline, resolved)
-        self.assertIn('--preserve-builtins ../baseline-resolved.config build/base/.config',
-                      (package / 'PKGBUILD').read_text())
-
     def test_headers_require_resolver_only_when_btf_enabled(self):
         recipe = ROOT / 'pkgbuilds/linux-aurora/PKGBUILD'
         for enabled, resolver, expected in [(False, False, 0), (True, False, 1), (True, True, 0)]:

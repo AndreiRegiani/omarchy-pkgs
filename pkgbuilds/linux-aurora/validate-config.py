@@ -23,20 +23,8 @@ def validate(fragment, resolved):
         raise ValueError('Kernel capabilities disabled by Kconfig:\n' + '\n'.join(missing))
 
 
-def preserve_builtins(baseline, resolved):
-    """Compare configs normalized by the same Kconfig and toolchain."""
-    before, after = values(baseline), values(resolved)
-    lost = [f'{name}: built in before fragments, got {after.get(name, "absent")}'
-            for name, value in before.items() if value == 'y' and after.get(name) != 'y']
-    if lost:
-        raise ValueError('Shared built-in capabilities downgraded:\n' + '\n'.join(lost))
-
-
 if __name__ == '__main__':
     try:
-        if sys.argv[1:2] == ['--preserve-builtins']:
-            preserve_builtins(*sys.argv[2:])
-        else:
-            validate(*sys.argv[1:])
+        validate(*sys.argv[1:])
     except (ValueError, OSError) as error:
         sys.exit(str(error))

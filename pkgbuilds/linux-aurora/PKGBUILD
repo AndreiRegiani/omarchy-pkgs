@@ -10,7 +10,7 @@
 
 _auroraver=7.1.12
 _aurorarel=7
-pkgrel=1
+pkgrel=2
 
 # Immutable pin on omacom/linux-aurora (branch integration/aurora). Every bump is a
 # PR that moves _commit; its cold-boot qualification is recorded in
@@ -38,12 +38,12 @@ makedepends=(
 options=('!strip')
 source=(validate-config.py "linux::git+https://github.com/omacom/linux-aurora.git#commit=${_commit}"
         rust-toolchain.toml bindgen-kernel.py config common.config neo.config)
-sha256sums=('e54876197d94c291e15e175dffc6e889670f59e828c5762a56cf6ac1a5071c1a'
+sha256sums=('b47f17822e05db4ffcd1c4138ec2b426f915c4a8b8c948982497fd32c3a62047'
             'SKIP'
             '443a9c4613172ea352f49b114818a1d75ab048ec4bd2d75b388a7ab3a8a1f046'
             '84a03d5fea19cae243c89f50c1736c639622d25d4d1de8d7d53ebd8f603c0f62'
             '0732060bdf4215c4e00e02afaca378044658923831a9bdae31f25a48e21527e5'
-            '769dee62ea341edd392f6e14828027f696ded9f49dc929137e75d95e2954064d'
+            '8e81d2a1c317a6080966b0d52cbb241ff6d4cd7d32ea9aaddb8dfc7aec0b6684'
             '6804a0b0ef200548b9ee4b7f10a345165dc6c1ba2ef9de00e2b43c48e8a58440')
 
 # Kbuild takes ARCH literally and knows arm64, not aarch64.
@@ -100,10 +100,15 @@ prepare() {
   rustup toolchain install 1.85.0 --profile minimal --component rust-src
   mkdir -p build/base
   cp ../config build/base/.config
+  # Normalize the shared baseline with this source/toolchain before comparing
+  # fragments: compiler feature probes can legitimately differ from config.
+  _make O="$PWD/build/base" olddefconfig
+  cp build/base/.config ../baseline-resolved.config
+  cp ../config build/base/.config
   scripts/kconfig/merge_config.sh -m -O "$PWD/build/base" build/base/.config ../common.config ../neo.config
-  # Keep shared kexec support: at this pin Neo radio admission acquires the
-  # apple_piodma_lock_transition() in pcie-apple-piodma-diag.c acquires the
-  # kernel kexec blocker before retaining DMA/firmware ownership. Both kexec
+  # Keep shared kexec support: apple_piodma_lock_transition() in
+  # pcie-apple-piodma-diag.c acquires the kernel kexec blocker before Neo radio
+  # admission retains DMA/firmware ownership. Both kexec
   # load APIs and execution reject while that blocker is held.
   # Keep config's -ARCH suffix: omarchy-mac-boot and update-m1n1 discover
   # device trees under /lib/modules/*-ARCH.
@@ -111,6 +116,7 @@ prepare() {
   _make O="$PWD/build/base" olddefconfig
   python3 ../validate-config.py ../common.config build/base/.config
   python3 ../validate-config.py ../neo.config build/base/.config
+  python3 ../validate-config.py --preserve-builtins ../baseline-resolved.config build/base/.config
   grep -qx 'CONFIG_RUST=y' build/base/.config || {
     echo 'linux-aurora requires Rust drivers; toolchain/configuration disabled CONFIG_RUST' >&2; return 1;
   }

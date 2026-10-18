@@ -61,12 +61,32 @@ class KernelRecipeTests(unittest.TestCase):
         common = (package / 'common.config').read_text()
         expected = {'CONFIG_SERIAL_APPLE_DOCKCHANNEL', 'CONFIG_SERIAL_APPLE_DOCKCHANNEL_EARLYCON',
                     'CONFIG_SYSFB_SIMPLEFB', 'CONFIG_DMABUF_HEAPS', 'CONFIG_DMABUF_HEAPS_SYSTEM',
-                    'CONFIG_UDMABUF', 'CONFIG_THERMAL_NETLINK', 'CONFIG_NVME_HWMON', 'CONFIG_TRUSTED_KEYS'}
+                    'CONFIG_UDMABUF', 'CONFIG_THERMAL_NETLINK', 'CONFIG_NVME_HWMON', 'CONFIG_TRUSTED_KEYS',
+                    'CONFIG_APPLE_SEP'}
         self.assertEqual({line.split('=', 1)[0] for line in common.splitlines()
                           if line.startswith('CONFIG_')}, expected)
         recipe = (package / 'PKGBUILD').read_text()
         self.assertIn('../common.config ../neo.config', recipe)
         self.assertIn('python3 ../validate-config.py ../common.config build/base/.config', recipe)
+
+    def test_trusted_keys_cannot_downgrade_the_builtin_sep_driver(self):
+        package = ROOT / 'pkgbuilds/linux-aurora'
+        spec = importlib.util.spec_from_file_location('sep_config_check', package / 'validate-config.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        fragment = package / 'common.config'
+        requested = module.values(fragment)
+        self.assertEqual(requested['CONFIG_TRUSTED_KEYS'], 'y')
+        self.assertEqual(requested['CONFIG_APPLE_SEP'], 'y')
+        with tempfile.TemporaryDirectory() as temporary:
+            resolved = Path(temporary) / 'config'
+            resolved.write_text(fragment.read_text())
+            module.validate(fragment, resolved)
+            for actual in ('m', 'n'):
+                resolved.write_text(fragment.read_text().replace('CONFIG_APPLE_SEP=y',
+                                                                'CONFIG_APPLE_SEP=' + actual))
+                with self.assertRaisesRegex(ValueError, 'CONFIG_APPLE_SEP'):
+                    module.validate(fragment, resolved)
 
     def test_generated_config_must_keep_every_requested_capability(self):
         validator = ROOT / 'pkgbuilds/linux-aurora/validate-config.py'
@@ -82,6 +102,23 @@ class KernelRecipeTests(unittest.TestCase):
                 'CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO=m', '# CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO is not set'))
             with self.assertRaisesRegex(ValueError, 'CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO'):
                 module.validate(fragment, resolved)
+
+    def test_fragments_cannot_silently_downgrade_normalized_shared_builtins(self):
+        package = ROOT / 'pkgbuilds/linux-aurora'
+        spec = importlib.util.spec_from_file_location('baseline_config_check', package / 'validate-config.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as temporary:
+            baseline, resolved = (Path(temporary) / name for name in ('baseline', 'resolved'))
+            baseline.write_text('CONFIG_EXISTING_DRIVER=y\nCONFIG_OPTIONAL=m\n')
+            resolved.write_text('CONFIG_EXISTING_DRIVER=y\nCONFIG_OPTIONAL=y\n')
+            module.preserve_builtins(baseline, resolved)
+            for actual in ('CONFIG_EXISTING_DRIVER=m\n', '# CONFIG_EXISTING_DRIVER is not set\n', ''):
+                resolved.write_text(actual)
+                with self.assertRaisesRegex(ValueError, 'CONFIG_EXISTING_DRIVER'):
+                    module.preserve_builtins(baseline, resolved)
+        self.assertIn('--preserve-builtins ../baseline-resolved.config build/base/.config',
+                      (package / 'PKGBUILD').read_text())
 
     def test_headers_require_resolver_only_when_btf_enabled(self):
         recipe = ROOT / 'pkgbuilds/linux-aurora/PKGBUILD'

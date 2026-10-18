@@ -34,6 +34,9 @@ PKGS_DB_BASE="${OMARCHY_PKGS_DB_BASE:-https://pkgs.omarchy.org}"
 # before an RC or final release can move forward.
 OBSERVED_ARCH=$(reference_arch)
 RC_DB_URL="$PKGS_DB_BASE/rc/$OBSERVED_ARCH/omarchy.db.tar.zst"
+# The x86_64 Arch mirrors rc and stable packages are built and run against.
+RC_ARCH_MIRROR="${OMARCHY_RC_ARCH_MIRROR:-https://rc-mirror.omarchy.org}"
+STABLE_ARCH_MIRROR="${OMARCHY_STABLE_ARCH_MIRROR:-https://stable-mirror.omarchy.org}"
 
 SRCDEST_DIR="$BUILD_ROOT/.srcdest"
 MIRROR_CLONE="$SRCDEST_DIR/omarchy"          # bare mirror (shared with bin/omarchy-pkgs)
@@ -180,6 +183,28 @@ ensure_work_clone() {
 }
 
 # --- published channel state -------------------------------------------------
+
+# The Arch snapshot a mirror serves: its lastsync stamp. Returns 2 when the
+# mirror cannot be read.
+mirror_lastsync() {
+  local stamp
+  stamp=$(curl -sf "$1/lastsync?$(date +%s%N)") || return 2
+  [[ $stamp =~ ^[0-9]+$ ]] || return 2
+  echo "$stamp"
+}
+
+# Stable packages were built and tested against rc's Arch snapshot. Promoted
+# while the stable mirror still serves an older one, they install against
+# libraries they were not built for (omarchy#15785). The mirror goes first:
+# omarchy-mirror-sync-stable-from-rc on the mirror host copies rc's snapshot,
+# lastsync included, to stable. aarch64 runs the live Arch Linux ARM mirror on
+# every channel, so it has nothing to wait for.
+stable_mirror_matches_rc() {
+  local rc stable
+  rc=$(mirror_lastsync "$RC_ARCH_MIRROR") || return 2
+  stable=$(mirror_lastsync "$STABLE_ARCH_MIRROR") || return 2
+  [[ $rc == "$stable" ]]
+}
 
 # Prints omarchy's published version in a channel; empty when absent, rc 2 when
 # the database cannot be read (callers must not mistake an outage for absence).
@@ -759,7 +784,8 @@ cmd_ship() {
   print_info "This will, in order (steps already done are skipped):"
   echo "  1. Tag v$version at the tested $branch@${pin_commit:0:12} on $UPSTREAM_REPO"
   echo "  2. Pin the final $version from that tag and publish it to rc"
-  echo "  3. Promote the rc channel to stable (packages + signatures + db)"
+  echo "  3. Promote the rc channel to stable (packages + signatures + db), once the"
+  echo "     stable Arch mirror serves rc's snapshot"
   echo "  4. Merge the final pins to master (edge overlap + record)"
   echo "  5. Create a draft GitHub release from the staging PR body"
   echo "  6. Build + upload the final ISO (${iso_mode})"
@@ -811,6 +837,15 @@ cmd_ship() {
   if all_arches_at_version stable "$version"; then
     print_success "3/7 Stable already serves $version on every architecture"
   else
+    if ! stable_mirror_matches_rc; then
+      local rc_sync stable_sync
+      rc_sync=$(mirror_lastsync "$RC_ARCH_MIRROR") || rc_sync=unreadable
+      stable_sync=$(mirror_lastsync "$STABLE_ARCH_MIRROR") || stable_sync=unreadable
+      print_error "3/7 The stable Arch mirror does not serve rc's snapshot yet (lastsync: rc $rc_sync, stable $stable_sync)"
+      print_info "Run omarchy-mirror-sync-stable-from-rc on the mirror host, then ship again"
+      exit 1
+    fi
+    print_success "3/7 The stable Arch mirror serves rc's snapshot"
     promote_channel rc stable || exit 1
     if ! all_arches_at_version stable "$version"; then
       print_error "Promotion ran but stable does not serve $version on every architecture"
@@ -1056,6 +1091,19 @@ cmd_self_test() {
   expect "mixed versions block release" "$(all_arches_at_version rc 4.0.2 && echo ready || echo blocked)" "blocked"
   TEST_ARM_VERSION=4.0.2-1
   expect "both architectures ready" "$(all_arches_at_version rc 4.0.2 && echo ready || echo blocked)" "ready"
+
+  # Ship promotes packages only once stable's Arch mirror serves rc's snapshot.
+  mirror_lastsync() {
+    case "$1" in
+      "$RC_ARCH_MIRROR") [[ ${TEST_RC_SYNC-1792185002} ]] && echo "${TEST_RC_SYNC-1792185002}" || return 2 ;;
+      "$STABLE_ARCH_MIRROR") [[ ${TEST_STABLE_SYNC-1792185002} ]] && echo "${TEST_STABLE_SYNC-1792185002}" || return 2 ;;
+    esac
+  }
+  expect "mirror on rc's snapshot" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "ready"
+  TEST_STABLE_SYNC=1792286001
+  expect "mirror on another snapshot blocks" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "blocked"
+  TEST_STABLE_SYNC=""
+  expect "unreadable mirror blocks" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "blocked"
   echo ""
   if ((failures == 0)); then
     print_success "Self-test passed"

@@ -41,7 +41,11 @@ gh workflow run release-rc.yml -R omacom/omarchy-pkgs
 Versions are inferred from branch names (`v4-0-2` ⇒ `4.0.2rcN` ⇒ tag
 `v4.0.2`); `start` is the only place a version is typed. Every command is
 idempotent — re-runs skip whatever is already done. `ship` refuses to promote
-a commit no RC was cut from. One exception: `ship` carries on past a failed
+a commit no RC was cut from. It also waits for the Arch mirror: stable
+packages are only promoted once `stable-mirror.omarchy.org` serves the
+snapshot rc was tested on (the two `lastsync` stamps match). On release day,
+run `omarchy-mirror-sync-stable-from-rc` on the mirror host first (see
+omacom/omarchy-mirror), then `ship`. One exception: `ship` carries on past a failed
 ISO or website step, and a later `ship` exits once stable holds the version
 and the GitHub release exists. Finish a failed ISO or website step by hand.
 

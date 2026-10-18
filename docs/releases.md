@@ -48,9 +48,10 @@ run `omarchy-mirror-sync-stable-from-rc` on the mirror host first (see
 omacom/omarchy-mirror), then `ship`. Snapshots only move forward: a
 feature rc takes a fresh one (`omarchy-mirror-sync-rc`), a patch rc keeps
 the one rc and stable have shared since the last ship, and release day
-copies rc's to stable. If stable is ever newer than rc, `ship` says so:
-copying rc over it would roll stable back, so repair rc with
-`omarchy-mirror-sync-rc-from-stable` and test rc on that snapshot first. One exception: `ship` carries on past a failed
+copies rc's to stable. Stable never syncs from upstream. If it is ever
+newer than rc, `ship` says so: copying rc over it would roll stable back,
+so it gives the command that copies stable's snapshot to rc by hand
+instead; test rc on that snapshot before shipping. One exception: `ship` carries on past a failed
 ISO or website step, and a later `ship` exits once stable holds the version
 and the GitHub release exists. Finish a failed ISO or website step by hand.
 

@@ -25,14 +25,21 @@ def check(kernel, package, baseline, output):
         report['source_commit'] = actual
         if actual != match[1]:
             raise ValueError(f'Kernel checkout {actual} differs from pin {match[1]}')
-        inputs = ['config', 'common.config', 'neo.config', 'validate-config.py', 'configure.sh']
+        inputs = ['config', 'validate-config.py', 'configure.sh']
         report['inputs'] = {
             name: hashlib.sha256((package / name).read_bytes()).hexdigest()
             for name in inputs}
+        fragment = kernel / 'arch/arm64/configs/aurora.config'
+        report['kernel_fragment_sha256'] = hashlib.sha256(fragment.read_bytes()).hexdigest()
+        shutil.copyfile(fragment, output / 'aurora.config')
+        baseline_fragments = [baseline / name for name in ('common.config', 'neo.config')]
+        if not all(path.exists() for path in baseline_fragments):
+            baseline_fragments = [baseline / 'kernel-aurora.config']
         report['baseline_inputs'] = {
-            name: hashlib.sha256((baseline / name).read_bytes()).hexdigest()
-            for name in inputs if name != 'configure.sh'}
+            path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in [baseline / 'config', *baseline_fragments]}
         report['comparison'] = 'Base and candidate package configs resolved with the same kernel and toolchain'
+        report['baseline_validation'] = 'Not run: baseline is for diff evidence; candidate validation is required'
         report['toolchain_scope'] = 'Configuration approximation; the full package build remains authoritative'
         original = (package / 'config').read_text()
         (output / 'original.config').write_text(original)
@@ -52,12 +59,17 @@ def check(kernel, package, baseline, output):
                 command = '''set -euo pipefail
 _make() { make ARCH=arm64 LLVM="${LLVM:-1}" BINDGEN="${BINDGEN:-bindgen}" LOCALVERSION= "$@"; }
 source "$1/configure.sh"
-configure_kernel "$2" "$3" "$4"
+if [[ $5 == baseline ]]; then
+    resolve_kernel_config "$2" "$3" "$4" "${@:6}"
+else
+    configure_kernel "$2" "$3" "$4"
+fi
 '''
                 snapshot = 'requested.config' if name == 'resolved' else 'baseline-requested.config'
                 try:
                     run(['bash', '-c', command, 'aurora-config', package,
-                         config_dir, build, output / snapshot])
+                         config_dir, build, output / snapshot, name,
+                         *(baseline_fragments if name == 'baseline' else [])])
                 finally:
                     if (build / '.config').exists():
                         shutil.copyfile(build / '.config', output / (name + '.config'))

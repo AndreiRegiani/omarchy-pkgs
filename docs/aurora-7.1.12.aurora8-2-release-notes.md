@@ -1,7 +1,10 @@
-# Aurora kernel edge update
+# Aurora kernel 7.1.12.aurora8-2 edge update
 
-This update uses kernel commit `339ea0487dfce434f8769d39046db95be03f6e48`,
-including the merged macaudio speaker-codec dependency fix.
+This update uses kernel commit `60ef6b4cd62a0249c0376e5f199f642f50b645f6`,
+which adds the shared Aurora defaults fragment to the reviewed `339ea0487`
+code base, including the merged macaudio speaker-codec dependency fix.
+The package merges and validates the kernel-owned fragment; driver choices
+are maintained with the kernel source.
 
 - Neo speaker support includes the MAX98360A amplifier driver. The explicit
   config requirement also guards against the driver being omitted in future.

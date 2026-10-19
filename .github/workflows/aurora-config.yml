@@ -80,6 +80,20 @@ jobs:
           EOF
       - name: Resolve and validate shared and Neo capabilities
         run: |
+          if [[ ! -f baseline/pkgbuilds/linux-aurora/common.config ]]; then
+            # Fetch the base package's kernel-owned fragment at its immutable
+            # pin, rather than accidentally comparing the candidate to itself.
+            python3 - <<'PY'
+          import pathlib, re, urllib.request
+          package = pathlib.Path('baseline/pkgbuilds/linux-aurora')
+          match = re.search(r'^_commit=([0-9a-f]{40})$', (package / 'PKGBUILD').read_text(), re.M)
+          if not match:
+              raise SystemExit('Expected a full baseline kernel commit pin')
+          url = f'https://raw.githubusercontent.com/omacom/linux-aurora/{match[1]}/arch/arm64/configs/aurora.config'
+          with urllib.request.urlopen(url, timeout=60) as response:
+              (package / 'kernel-aurora.config').write_bytes(response.read())
+          PY
+          fi
           python3 tests/aurora-edge/configure.py --kernel "$PWD/kernel" \
             --baseline "$PWD/baseline/pkgbuilds/linux-aurora" \
             --output "$RUNNER_TEMP/aurora-config-report"

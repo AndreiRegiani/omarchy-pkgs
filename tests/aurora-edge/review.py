@@ -32,8 +32,14 @@ class KernelRecipeTests(unittest.TestCase):
     def test_shared_config_keeps_existing_machine_behaviour(self):
         package = ROOT / 'pkgbuilds/linux-aurora'
         recipe = (package / 'PKGBUILD').read_text()
-        self.assertIn('cp ../config build/base/.config', recipe)
-        self.assertIn("grep -qx 'CONFIG_RUST=y'", recipe)
+        helper = (package / 'configure.sh').read_text()
+        self.assertIn('source ../configure.sh', recipe)
+        self.assertIn('configure_kernel "$PWD/.." "$PWD/build/base"', recipe)
+        self.assertIn('cp "$config_dir/config" "$output_dir/.config"', helper)
+        self.assertIn("grep -qx 'CONFIG_RUST=y'", helper)
+        gate = (ROOT / 'tests/aurora-edge/configure.py').read_text()
+        self.assertIn('source "$1/configure.sh"', gate)
+        self.assertIn('configure_kernel "$2" "$3" "$4"', gate)
         self.assertNotIn('j700.config', recipe)
         self.assertNotIn('j700-device-parity.config', recipe)
         original = (package / 'config').read_text()
@@ -69,8 +75,10 @@ class KernelRecipeTests(unittest.TestCase):
         self.assertEqual({line.split('=', 1)[0] for line in common.splitlines()
                           if line.startswith('CONFIG_')}, expected)
         recipe = (package / 'PKGBUILD').read_text()
-        self.assertIn('../common.config ../neo.config', recipe)
-        self.assertIn('python3 ../validate-config.py ../common.config build/base/.config', recipe)
+        helper = (package / 'configure.sh').read_text()
+        self.assertIn('configure.sh', recipe)
+        self.assertIn('"$config_dir/common.config" "$config_dir/neo.config"', helper)
+        self.assertIn('python3 "$config_dir/validate-config.py" "$config_dir/common.config"', helper)
 
     def test_trusted_keys_cannot_downgrade_the_builtin_sep_driver(self):
         package = ROOT / 'pkgbuilds/linux-aurora'

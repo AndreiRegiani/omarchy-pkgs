@@ -6,7 +6,8 @@ and starts the two workflows that build and move packages:
 
 - **Build release candidate** (`.github/workflows/release-rc.yml`) builds the
   `omarchy` and `omarchy-settings` pins on this repository's `rc` branch for
-  both architectures and publishes them to `rc`.
+  both architectures and publishes them to `rc`, then carries the same files
+  to `edge` when they are newer than what edge serves.
 - **Promote channel** (`.github/workflows/promote.yml`) carries one channel
   into the next ([below](#promoting-a-channel)).
 
@@ -23,7 +24,7 @@ bin/omarchy-release              # shepherd: status + guided next step
 bin/omarchy-release start 4.0.2  # open the train: branch v4-0-2 + staging PR
                                  # (a minor/major also promotes edge → rc)
 bin/omarchy-release pick         # choose merged PRs to cherry-pick (multi-select)
-bin/omarchy-release rc           # pin the next 4.0.2rcN, build it into rc
+bin/omarchy-release rc           # pin the next 4.0.2rcN, build it into rc + edge
 bin/omarchy-release ship         # tag, final pins built into rc, promote rc → stable,
                                  # draft GitHub release, ISO, website — one swoop
 bin/omarchy-release doctor       # verify credentials/connections up front
@@ -83,6 +84,12 @@ The release pair is marked `"pinned": true`. It is built for `rc` only by
 **Build release candidate**, which takes the pins from the `rc` branch and sets
 `OMARCHY_RC_PINS=1`, and never built for `stable`: stable gets it by promotion.
 A merge to `master` therefore cannot overwrite an RC in flight.
+
+The same run carries rc's exact files into `edge` (`publish-artifact
+--newer-only`), so edge users run every RC and final too. It skips edge when
+edge already serves that version or a newer one: a patch train's RC never
+takes edge back from a newer train's. When `ship` merges the final pins to
+`master`, edge already serves them and the merge's publish builds nothing.
 
 The `omarchy` and `omarchy-settings` packages are released as a pair, always
 built from the same upstream commit of basecamp/omarchy.

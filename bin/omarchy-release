@@ -4,6 +4,7 @@
 # A release train has three human moments, each one command:
 #   start  open the train: release branch + staging PR (+ advance edge -> rc)
 #   rc     cut a candidate: pin PKGBUILDs to the branch head, publish to rc
+#          and edge
 #   ship   make it official: final pins, promote rc -> stable, tag, GH release,
 #          ISO, website
 #
@@ -58,7 +59,8 @@ Commands:
                      minor/major promote edge -> rc (promote.yml)
   pick [pr#|sha ...] Cherry-pick merged PRs onto the release branch; with no
                      args, choose from a list of merged $DEV_BRANCH PRs
-  rc                 Cut the next X.Y.ZrcN and build it into rc (release-rc.yml)
+  rc                 Cut the next X.Y.ZrcN, build it into rc and carry it to edge
+                     (release-rc.yml)
   ship               Tag, final pins, promote rc -> stable (promote.yml), draft
                      GitHub release, ISO (prompted), website bump
   status             Show where the train stands (read-only)
@@ -275,8 +277,9 @@ rc_branch_pin() { # prints "pkgver commit", empty when no rc branch
 # --- package workflows -------------------------------------------------------
 #
 # The pair is built and channels move in GitHub Actions, on the bucket itself:
-# release-rc.yml builds the rc branch's pins into rc, and promote.yml carries
-# one channel into the next. Each run records who started it and what moved.
+# release-rc.yml builds the rc branch's pins into rc and carries them to edge,
+# and promote.yml carries one channel into the next. Each run records who
+# started it and what moved.
 
 # Starts a workflow on this repo's master and prints its run. With --wait it
 # follows the run to the end and fails when the run does.
@@ -304,7 +307,8 @@ dispatch_workflow() { # dispatch_workflow [--wait] <workflow file> [-f key=value
   gh run watch "$run" -R "$PKGS_REPO" --exit-status --interval 30
 }
 
-# Builds the pinned release pair from the rc branch into rc (release-rc.yml).
+# Builds the pinned release pair from the rc branch into rc, then edge
+# (release-rc.yml).
 trigger_rc_build() { # trigger_rc_build [--wait]
   print_info "Building the release candidate in GitHub Actions..."
   dispatch_workflow "$@" release-rc.yml
@@ -360,7 +364,8 @@ cut_pins() { # cut_pins <omarchy-pkgs release args...>
   # The pin engine's "edge DB" is the ordering floor and rc auto-numbering
   # source; in the pipeline model that floor is the rc channel.
   (cd "$RC_WORKTREE" &&
-    OMARCHY_EDGE_DB_URL="$RC_DB_URL" bin/omarchy-pkgs release "$@" --no-push --yes)
+    OMARCHY_EDGE_DB_URL="$RC_DB_URL" OMARCHY_RELEASE_CHANNELS="rc + edge via release-rc.yml (stable only by promotion in ship)" \
+      bin/omarchy-pkgs release "$@" --no-push --yes)
   git -C "$RC_WORKTREE" push --force-with-lease origin rc
 }
 
@@ -715,7 +720,7 @@ cmd_rc() {
     fi
   fi
 
-  confirm "Pin omarchy + omarchy-settings to $branch@${head:0:12} as the next ${version}rcN and publish to rc?" || exit 1
+  confirm "Pin omarchy + omarchy-settings to $branch@${head:0:12} as the next ${version}rcN and publish to rc + edge?" || exit 1
 
   cut_pins rc --base "$version" --ref "$branch"
 
@@ -800,10 +805,10 @@ cmd_ship() {
   echo ""
   print_info "This will, in order (steps already done are skipped):"
   echo "  1. Tag v$version at the tested $branch@${pin_commit:0:12} on $UPSTREAM_REPO"
-  echo "  2. Pin the final $version from that tag and publish it to rc"
+  echo "  2. Pin the final $version from that tag and publish it to rc + edge"
   echo "  3. Promote the rc channel to stable (packages + signatures + db), once the"
   echo "     stable Arch mirror serves rc's snapshot"
-  echo "  4. Merge the final pins to master (edge overlap + record)"
+  echo "  4. Merge the final pins to master (the repo record)"
   echo "  5. Create a draft GitHub release from the staging PR body"
   echo "  6. Build + upload the final ISO (${iso_mode})"
   echo "  7. Point the website at the new ISO"
@@ -872,7 +877,8 @@ cmd_ship() {
     print_success "3/7 Promoted to stable: omarchy $stable_pub on every architecture"
   fi
 
-  # 4. Final pins onto master (keeps edge overlap publishing and the repo record)
+  # 4. Final pins onto master: the repo record. Edge already serves the final
+  # from step 2, so the merge's publish finds nothing to build.
   local master_ver
   master_ver=$(git -C "$BUILD_ROOT" show origin/master:pkgbuilds/omarchy/PKGBUILD 2>/dev/null | grep -E '^pkgver=' | head -1 | cut -d= -f2)
   if [[ "$master_ver" == "$version" ]]; then

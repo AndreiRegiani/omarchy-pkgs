@@ -10,9 +10,9 @@
 #    provenance only (empty when cut from a bare commit). omarchy and
 #    omarchy-settings must always carry identical _tag/_commit/pkgver/sha256sums.
 pkgname='omarchy'
-_tag='v4.0.5'
-_commit='94a8fbc2d67eec5673c7f16b8c5e8a9c8452ffdc'
-pkgver=4.0.5
+_tag='v4.0.6'
+_commit='237f1b4071a0bff2296c6d740ba2b9fd695ebfa0'
+pkgver=4.0.6
 pkgrel=1
 pkgdesc='Beautiful, modern, and opinionated Arch Linux by DHH'
 # The payload is architecture-independent, but the dependency set is not: the
@@ -96,7 +96,7 @@ if [[ -n "${OMARCHY_SRC:-}" ]]; then
   sha256sums=()
 else
   source=("omarchy::git+https://github.com/basecamp/omarchy.git#commit=${_commit}")
-  sha256sums=('ce413d3fb5b90fab5b2e5cec66552a0562bc1fa3503e3b02e6c067c9a7a7a687')
+  sha256sums=('f89ae5e85d18d8364f5c89ae05cd0fd170a8c4c93dd62e396b2b0a7fa5be4428')
 fi
 
 prepare() {

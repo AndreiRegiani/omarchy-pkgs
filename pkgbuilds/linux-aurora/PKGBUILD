@@ -10,7 +10,7 @@
 
 _auroraver=7.2.10
 _aurorarel=1
-pkgrel=1
+pkgrel=2
 
 # Immutable pin on omacom/linux-aurora (branch integration/aurora). Every bump is a
 # PR that moves _commit; its cold-boot qualification is recorded in
@@ -123,11 +123,17 @@ build() {
   _make O="$PWD/build/base" -j"${OMARCHY_BUILD_JOBS:-10}" Image modules dtbs
 }
 
+check() {
+  cd $_srcname
+  python -I tools/aurora-sep/tests/test_extract_mesa_calibration.py
+}
+
 _package_kernel() {
   pkgdesc="The $pkgdesc kernel and modules"
   depends=(coreutils kmod initramfs $2 "m1n1>=$_m1n1_version")
   optdepends=('crda: to set the correct wireless channels of your country'
-              'linux-firmware: firmware images needed for some devices')
+              'linux-firmware: firmware images needed for some devices'
+              'python: extract-mesa-calibration, for Touch ID')
   # No generic linux provide: on a shared aarch64 repository it would compete
   # with linux-aarch64 for any dependency on linux.
   provides=(WIREGUARD-MODULE linux-asahi=${pkgver})
@@ -149,6 +155,13 @@ _package_kernel() {
 
   echo "Installing device trees..."
   install -Dt "$modulesdir/dtbs" "$O"/arch/arm64/boot/dts/apple/*.dtb
+
+  # Touch ID needs this Mac's Mesa calibration, which the SEP driver loads as
+  # firmware. The extractor ships with the kernel it was written for, at a path
+  # of its own, so the platform package can run it without carrying a copy.
+  echo "Installing the Mesa calibration extractor..."
+  install -Dm755 tools/aurora-sep/extract-mesa-calibration.py \
+    "$pkgdir/usr/lib/linux-aurora/extract-mesa-calibration"
 
   # remove build and source links
   rm -f "$modulesdir"/{source,build}

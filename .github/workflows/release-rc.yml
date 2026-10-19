@@ -181,7 +181,8 @@ jobs:
           builder=ghcr.io/omacom/omarchy-pkg-builder:$(bin/builder-image key --arch x86_64 --mirror edge)
           docker image inspect "$builder" >/dev/null 2>&1 || docker pull --quiet "$builder" || docker buildx build --load -t "$builder" --build-arg MIRROR=edge build
           for arch in x86_64 aarch64; do
-            mkdir -p "edge-carry/$arch"
+            # The builder image runs as its own user, not the runner's.
+            mkdir -p "edge-carry/$arch" && chmod 777 "edge-carry/$arch"
             # The pair's filenames come from rc's database, so edge gets the
             # very files rc serves, not whatever else shares the version.
             if docker run --rm \

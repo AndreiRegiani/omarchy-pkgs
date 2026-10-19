@@ -133,7 +133,7 @@ merge to master
                         with edge for the fast ring
 by hand, from Actions or bin/omarchy-release
   ├─ promote.yml        Promote channel: edge -> rc, rc -> stable
-  └─ release-rc.yml     Build release candidate: the rc branch's pins -> rc
+  └─ release-rc.yml     Build release candidate: the rc branch's pins -> rc, edge
 pkgs.omarchy.org        served from the R2 bucket omarchy-pkgs through a CDN
 ```
 
@@ -575,7 +575,8 @@ Details: [docs/upstream-sources.md](docs/upstream-sources.md),
 workflows that do the work:
 
 - **Build release candidate** (`release-rc.yml`) builds the `rc` branch's pins
-  for both architectures and publishes them to `rc`.
+  for both architectures and publishes them to `rc`, then carries the same
+  files to `edge` when newer than what edge serves.
 - **Promote channel** (`promote.yml`) carries `rc` into `stable` when the
   train ships, and `edge` into `rc` when a minor or major train opens.
 
@@ -618,7 +619,7 @@ docs/                          Reference
 | `test.yml` | PR, dispatch | `self-tests` and `build-isolation` |
 | `publish.yml` | push to `master`, dispatch | Signs and publishes; brings `rc` and `stable` in line with `edge` for the fast ring |
 | `promote.yml` | dispatch | Promote channel: `edge` → `rc`, `rc` → `stable` |
-| `release-rc.yml` | dispatch | Build release candidate: the `rc` branch's pins into `rc` |
+| `release-rc.yml` | dispatch | Build release candidate: the `rc` branch's pins into `rc`, then `edge` |
 | `unpublish.yml` | dispatch | Removes retired packages from channel databases |
 | `auto-merge-pr.yml` | PR events, dispatch | Enables auto-merge on trusted package PRs |
 | `approve-pr.yml` | PR events | Releases GitHub's hold on a `build-approved` PR's runs |

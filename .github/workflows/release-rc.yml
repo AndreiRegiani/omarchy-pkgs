@@ -204,7 +204,7 @@ jobs:
                   exit 1
                 fi
                 for f in $files; do rclone copy "$rc/$f" /carry --s3-no-head; done
-                bin/publish-artifact --remote R2:omarchy-pkgs --mirror edge --arch "$ARCH" --newer-only $(printf "/carry/%s " $files)
+                bin/publish-artifact --remote R2:omarchy-pkgs --mirror edge --arch "$ARCH" $(printf "/carry/%s " $files)
               ' 2>&1 | tee "edge-carry/$arch.log"; then
               status=published
             else

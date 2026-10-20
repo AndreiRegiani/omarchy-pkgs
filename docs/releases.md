@@ -108,10 +108,10 @@ The release pair is marked `"pinned": true`. It is built for `rc` only by
 `OMARCHY_RC_PINS=1`, and never built for `stable`: stable gets it by promotion.
 A merge to `master` therefore cannot overwrite an RC in flight.
 
-The same run carries rc's exact files into `edge` (`publish-artifact
---newer-only`), so edge users run every RC and final too. It skips edge when
-edge already serves that version or a newer one: a patch train's RC never
-takes edge back from a newer train's. When `ship` merges the final pins to
+The same run carries rc's exact files into `edge`, so edge users run every RC
+and final too. Like every publish, it skips a channel that already serves that
+version or a newer one: a patch train's RC never takes edge back from a newer
+train's. When `ship` merges the final pins to
 `master`, edge already serves them and the merge's publish builds nothing.
 
 The `omarchy` and `omarchy-settings` packages are released as a pair, always

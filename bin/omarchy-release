@@ -41,9 +41,12 @@ PKGS_DB_BASE="${OMARCHY_PKGS_DB_BASE:-https://pkgs.omarchy.org}"
 # before an RC or final release can move forward.
 OBSERVED_ARCH=$(reference_arch)
 RC_DB_URL="$PKGS_DB_BASE/rc/$OBSERVED_ARCH/omarchy.db.tar.zst"
-# The x86_64 Arch mirrors rc and stable packages are built and run against.
+# The Arch mirrors rc and stable packages are built and run against: Arch's
+# for x86_64, Arch Linux ARM's for aarch64.
 RC_ARCH_MIRROR="${OMARCHY_RC_ARCH_MIRROR:-https://rc-mirror.omarchy.org}"
 STABLE_ARCH_MIRROR="${OMARCHY_STABLE_ARCH_MIRROR:-https://stable-mirror.omarchy.org}"
+RC_ARM_MIRROR="${OMARCHY_RC_ARM_MIRROR:-https://arm-rc-mirror.omarchy.org}"
+STABLE_ARM_MIRROR="${OMARCHY_STABLE_ARM_MIRROR:-https://arm-stable-mirror.omarchy.org}"
 
 SRCDEST_DIR="$BUILD_ROOT/.srcdest"
 MIRROR_CLONE="$SRCDEST_DIR/omarchy"          # bare mirror (shared with bin/omarchy-pkgs)
@@ -237,31 +240,52 @@ mirror_lastsync() {
   echo "$stamp"
 }
 
-# Stable packages were built and tested against rc's Arch snapshot. Promoted
-# while the stable mirror still serves an older one, they install against
-# libraries they were not built for (omarchy#15785). The mirror goes first:
-# omarchy-mirror-sync-stable-from-rc on the mirror host copies rc's snapshot,
-# lastsync included, to stable. aarch64 runs the live Arch Linux ARM mirror on
-# every channel, so it has nothing to wait for.
-stable_mirror_matches_rc() {
-  local rc stable
-  rc=$(mirror_lastsync "$RC_ARCH_MIRROR") || return 2
-  stable=$(mirror_lastsync "$STABLE_ARCH_MIRROR") || return 2
-  [[ $rc == "$stable" ]]
+# A channel's Arch mirror for an architecture: arch_mirror rc|stable <arch>.
+arch_mirror() {
+  local channel="$1" arch="$2"
+  if [[ $arch == "aarch64" ]]; then
+    if [[ $channel == "rc" ]]; then echo "$RC_ARM_MIRROR"; else echo "$STABLE_ARM_MIRROR"; fi
+  else
+    if [[ $channel == "rc" ]]; then echo "$RC_ARCH_MIRROR"; else echo "$STABLE_ARCH_MIRROR"; fi
+  fi
 }
 
-# What to run on the mirror host when the stamps differ. Normally stable is
+# Stable packages were built and tested against rc's Arch snapshot. Promoted
+# while the stable mirror still serves an older one, they install against
+# libraries they were not built for (omarchy#15785). The mirror goes first, on
+# every architecture CI publishes: omarchy-mirror-sync-stable-from-rc on the
+# mirror host copies rc's x86_64 snapshot, lastsync included, to stable, and
+# omarchy-mirror-promote-arm on the ARM mirror host Arch Linux ARM's. With an
+# architecture, only that one's mirrors are compared.
+stable_mirror_matches_rc() {
+  local arch rc stable status=0
+  for arch in ${1:-$(ci_arches)}; do
+    rc=$(mirror_lastsync "$(arch_mirror rc "$arch")") || return 2
+    stable=$(mirror_lastsync "$(arch_mirror stable "$arch")") || return 2
+    [[ $rc == "$stable" ]] || status=1
+  done
+  return $status
+}
+
+# What to run on an architecture's mirror host when the stamps differ:
+# mirror_sync_hint <rc stamp> <stable stamp> [arch]. Normally stable is
 # behind and takes rc's snapshot. Stable newer than rc means something synced
 # it from upstream, which omarchy-mirror no longer does (omarchy-mirror#13);
 # copying rc over it would roll stable users' Arch packages back, so the hint
 # gives rc stable's snapshot by hand instead. An unreadable stamp suggests no
 # copy at all.
 mirror_sync_hint() {
-  local rc="$1" stable="$2"
+  local rc="$1" stable="$2" arch="${3:-x86_64}"
   if [[ ! $rc =~ ^[0-9]+$ || ! $stable =~ ^[0-9]+$ ]]; then
-    echo "Check that rc-mirror and stable-mirror both answer /lastsync, then ship again"
+    echo "Check that $(arch_mirror rc "$arch") and $(arch_mirror stable "$arch") both answer /lastsync, then ship again"
   elif ((stable > rc)); then
-    echo "Stable is newer than rc, so copying rc to stable would roll it back; find what synced stable from upstream. On the mirror host, give rc stable's snapshot with omarchy-mirror-copy-stage --from /mnt/arch-mirror-stable/ --to /mnt/arch-mirror-rc/ --r2 omarchy:omarchy-mirror-rc, test rc on it, then ship again"
+    if [[ $arch == "aarch64" ]]; then
+      echo "Stable is newer than rc, so copying rc to stable would roll it back; find what synced stable from upstream. On the ARM mirror host, give rc stable's snapshot with omarchy-mirror-promote-arm --from omarchy:omarchy-mirror-arm-stable --to omarchy:omarchy-mirror-arm-rc, test rc on it, then ship again"
+    else
+      echo "Stable is newer than rc, so copying rc to stable would roll it back; find what synced stable from upstream. On the mirror host, give rc stable's snapshot with omarchy-mirror-copy-stage --from /mnt/arch-mirror-stable/ --to /mnt/arch-mirror-rc/ --r2 omarchy:omarchy-mirror-rc, test rc on it, then ship again"
+    fi
+  elif [[ $arch == "aarch64" ]]; then
+    echo "On the ARM mirror host, run omarchy-mirror-promote-arm --from omarchy:omarchy-mirror-arm-rc --to omarchy:omarchy-mirror-arm-stable, then ship again"
   else
     echo "Run omarchy-mirror-sync-stable-from-rc on the mirror host, then ship again"
   fi
@@ -591,11 +615,17 @@ start_dev_train() { # start_dev_train <version>
 
   # A feature rc tests against a fresh Arch snapshot. rc and stable still
   # sharing one means rc has not taken it since the last ship.
-  if stable_mirror_matches_rc; then
-    print_warning "rc's Arch mirror still serves stable's snapshot"
-    echo "A minor/major train tests against a fresh one: run omarchy-mirror-sync-rc on the mirror host first."
+  local arch
+  for arch in $(ci_arches); do
+    stable_mirror_matches_rc "$arch" || continue
+    print_warning "rc's $arch Arch mirror still serves stable's snapshot"
+    if [[ $arch == "aarch64" ]]; then
+      echo "A minor/major train tests against a fresh one: run omarchy-mirror-promote-arm --from omarchy:omarchy-mirror-arm --to omarchy:omarchy-mirror-arm-rc on the ARM mirror host first."
+    else
+      echo "A minor/major train tests against a fresh one: run omarchy-mirror-sync-rc on the mirror host first."
+    fi
     confirm "Open the train on the current snapshot anyway?" || exit 1
-  fi
+  done
 
   # A minor/major usually ships what has collected on edge, so RC testing
   # runs against it: carry edge forward into rc, since shipping promotes all
@@ -1006,15 +1036,17 @@ cmd_ship() {
   if all_arches_at_version stable "$version"; then
     print_success "3/7 Stable already serves $version on every architecture"
   else
-    if ! stable_mirror_matches_rc; then
-      local rc_sync stable_sync
-      rc_sync=$(mirror_lastsync "$RC_ARCH_MIRROR") || rc_sync=unreadable
-      stable_sync=$(mirror_lastsync "$STABLE_ARCH_MIRROR") || stable_sync=unreadable
-      print_error "3/7 The stable Arch mirror does not serve rc's snapshot yet (lastsync: rc $rc_sync, stable $stable_sync)"
-      print_info "$(mirror_sync_hint "$rc_sync" "$stable_sync")"
-      exit 1
-    fi
-    print_success "3/7 The stable Arch mirror serves rc's snapshot"
+    local arch rc_sync stable_sync behind=0
+    for arch in $(ci_arches); do
+      stable_mirror_matches_rc "$arch" && continue
+      rc_sync=$(mirror_lastsync "$(arch_mirror rc "$arch")") || rc_sync=unreadable
+      stable_sync=$(mirror_lastsync "$(arch_mirror stable "$arch")") || stable_sync=unreadable
+      print_error "3/7 The stable $arch Arch mirror does not serve rc's snapshot yet (lastsync: rc $rc_sync, stable $stable_sync)"
+      print_info "$(mirror_sync_hint "$rc_sync" "$stable_sync" "$arch")"
+      behind=1
+    done
+    ((behind == 0)) || exit 1
+    print_success "3/7 The stable Arch mirrors serve rc's snapshot: $(ci_arches | paste -sd' ')"
     promote_channel rc stable || exit 1
     if ! all_arches_at_version stable "$version"; then
       print_error "Promotion ran but stable does not serve $version on every architecture"
@@ -1312,11 +1344,15 @@ cmd_self_test() {
   TEST_ARM_VERSION=4.0.2-1
   expect "both architectures ready" "$(all_arches_at_version rc 4.0.2 && echo ready || echo blocked)" "ready"
 
-  # Ship promotes packages only once stable's Arch mirror serves rc's snapshot.
+  # Ship promotes packages only once stable's Arch mirror serves rc's snapshot,
+  # on every architecture.
   mirror_lastsync() {
     case "$1" in
       "$RC_ARCH_MIRROR") [[ ${TEST_RC_SYNC-1792185002} ]] && echo "${TEST_RC_SYNC-1792185002}" || return 2 ;;
       "$STABLE_ARCH_MIRROR") [[ ${TEST_STABLE_SYNC-1792185002} ]] && echo "${TEST_STABLE_SYNC-1792185002}" || return 2 ;;
+      "$RC_ARM_MIRROR") [[ ${TEST_ARM_RC_SYNC-1792494243} ]] && echo "${TEST_ARM_RC_SYNC-1792494243}" || return 2 ;;
+      "$STABLE_ARM_MIRROR") [[ ${TEST_ARM_STABLE_SYNC-1792494243} ]] && echo "${TEST_ARM_STABLE_SYNC-1792494243}" || return 2 ;;
+      *) return 2 ;;
     esac
   }
   expect "mirror on rc's snapshot" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "ready"
@@ -1327,6 +1363,19 @@ cmd_self_test() {
   expect "stable ahead of rc is not rolled back" "$(mirror_sync_hint 1792185002 1792286001 | grep -o 'omarchy-mirror-[a-z-]*' | head -1) $(mirror_sync_hint 1792185002 1792286001 | grep -o 'to /mnt/arch-mirror-[a-z]*')" "omarchy-mirror-copy-stage to /mnt/arch-mirror-rc"
   expect "an unreadable mirror suggests no copy" "$(mirror_sync_hint 1792185002 unreadable | grep -o 'omarchy-mirror-sync-[a-z-]*' || echo none)" "none"
   expect "stable behind rc takes rc's snapshot" "$(mirror_sync_hint 1792286001 1792185002 | grep -o 'omarchy-mirror-sync-[a-z-]*')" "omarchy-mirror-sync-stable-from-rc"
+  TEST_STABLE_SYNC=1792185002
+  TEST_ARM_STABLE_SYNC=1791398870
+  expect "an ARM mirror on another snapshot blocks" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "blocked"
+  expect "x86_64 alone is on rc's snapshot" "$(stable_mirror_matches_rc x86_64 && echo ready || echo blocked)" "ready"
+  expect "aarch64 alone is not" "$(stable_mirror_matches_rc aarch64 && echo ready || echo blocked)" "blocked"
+  TEST_ARM_STABLE_SYNC=""
+  expect "an unreadable ARM mirror blocks" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "blocked"
+  CI_ARCHES=x86_64
+  expect "an x86_64-only release does not read the ARM mirrors" "$(stable_mirror_matches_rc && echo ready || echo blocked)" "ready"
+  CI_ARCHES="x86_64 aarch64"
+  expect "ARM stable behind rc takes rc's snapshot" "$(mirror_sync_hint 1792494243 1791398870 aarch64 | grep -o 'omarchy-mirror-promote-arm --from [^ ]* --to [^ ,]*')" "omarchy-mirror-promote-arm --from omarchy:omarchy-mirror-arm-rc --to omarchy:omarchy-mirror-arm-stable"
+  expect "ARM stable ahead of rc is not rolled back" "$(mirror_sync_hint 1791398870 1792494243 aarch64 | grep -o 'omarchy-mirror-promote-arm --from [^ ]* --to [^ ,]*')" "omarchy-mirror-promote-arm --from omarchy:omarchy-mirror-arm-stable --to omarchy:omarchy-mirror-arm-rc"
+  expect "an unreadable ARM mirror names its hosts" "$(mirror_sync_hint 1792494243 unreadable aarch64 | grep -o 'https://arm-[a-z]*-mirror.omarchy.org' | paste -sd' ')" "https://arm-rc-mirror.omarchy.org https://arm-stable-mirror.omarchy.org"
   echo ""
   if ((failures == 0)); then
     print_success "Self-test passed"

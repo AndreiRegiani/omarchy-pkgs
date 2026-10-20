@@ -102,6 +102,16 @@ class EdgeMetadataTests(unittest.TestCase):
         recipe = (ROOT / 'pkgbuilds' / 'linux-aurora' / 'PKGBUILD').read_text()
         self.assertNotIn('replaces=', recipe)
 
+    def test_kernel_ships_the_calibration_extractor_beside_aurora_touchid(self):
+        # The extractor is installed from the kernel's own tree. Its path must stay
+        # clear of aurora-touchid's copy so both packages can be installed at once.
+        recipe = (ROOT / 'pkgbuilds' / 'linux-aurora' / 'PKGBUILD').read_text()
+        self.assertIn('install -Dm755 tools/aurora-sep/extract-mesa-calibration.py', recipe)
+        self.assertIn('"$pkgdir/usr/lib/linux-aurora/extract-mesa-calibration"', recipe)
+        self.assertNotIn('/usr/lib/aurora-touchid/', recipe)
+        self.assertIn('python -I tools/aurora-sep/tests/test_extract_mesa_calibration.py', recipe)
+        self.assertIn('python: extract-mesa-calibration, for Touch ID', recipe)
+
     def test_every_recipe_is_apple_silicon_only(self):
         for name in NAMES:
             for package in srcinfo(name).values():

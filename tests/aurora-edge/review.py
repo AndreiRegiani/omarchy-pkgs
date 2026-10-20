@@ -217,7 +217,7 @@ class FirmwareTests(unittest.TestCase):
             code = script.read_text().replace('/usr/bin/set-wireless-regdom', str(root / 'no-host-helper'))
             result = subprocess.run(['bash', '-c', code], text=True, capture_output=True, timeout=9,
                 env=dict(os.environ, PATH=str(root) + ':' + os.environ['PATH'], FIXTURE=str(root),
-                         AURORA_REGDOM_POLICY_DIR=str(root / 'policy')))
+                         AURORA_FIRMWARE_ROOT=str(root / 'firmware')))
             self.assertNotEqual(result.returncode, 0, 'systemd must restart a dead event stream')
             self.assertEqual((root / 'calls').read_text().splitlines(), ['fallback'])
             self.assertEqual((root / 'country').read_text().strip(), '00')
@@ -249,7 +249,7 @@ esac
             process = subprocess.Popen(['bash', '-c', code], text=True, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, start_new_session=True,
                 env=dict(os.environ, PATH=str(root) + ':' + os.environ['PATH'], FIXTURE=str(root),
-                         AURORA_REGDOM_POLICY_DIR=str(root / 'policy')))
+                         AURORA_FIRMWARE_ROOT=str(root / 'firmware')))
             try:
                 stdout, stderr = process.communicate(timeout=8)
             except subprocess.TimeoutExpired:
@@ -274,7 +274,7 @@ fall_back
 current=JP; fall_back
 [[ $calls == 2 && $SECONDS -ge 60 ]] || exit 11
 # A supported hint arriving during the delay must not be overwritten.
-touch "$policy/US.bin"
+mkdir -p "$firmware/mediatek/mt7932/policy"; touch "$firmware/mediatek/mt7932/policy/US.bin"
 sleep() { SECONDS=$((SECONDS+$1)); current=US; }
 current=PL; fall_back
 [[ $calls == 2 && $current == US ]] || exit 12
@@ -282,9 +282,29 @@ current=00; fall_back
 [[ $calls == 2 ]] || exit 13
 '''
         with tempfile.TemporaryDirectory() as temporary:
-            result = shell(code, env=dict(os.environ, AURORA_REGDOM_POLICY_DIR=temporary))
+            result = shell(code, env=dict(os.environ, AURORA_FIRMWARE_ROOT=temporary))
         self.assertEqual(result.returncode, 0, result.stderr)
 
+
+    def test_a_policy_extracted_into_vendor_firmware_keeps_its_country(self):
+        path = ROOT / 'pkgbuilds/omarchy-aurora-firmware/aurora-regdom-fallback'
+        # vendorfw puts per-machine files under vendor/, which the kernel's
+        # firmware loader searches first; a US policy there must keep US.
+        setup = path.read_text().split('\n# An initramfs')[0]
+        code = setup + '''
+calls=0; current=US
+sleep() { SECONDS=$((SECONDS+$1)); }
+iw() { if [[ $1 == reg && $2 == get ]]; then echo "country $current:"; else calls=$((calls+1)); current=00; fi; }
+mkdir -p "$firmware/vendor/mediatek/mt7932/policy"
+touch "$firmware/vendor/mediatek/mt7932/policy/US.bin"
+fall_back
+[[ $calls == 0 && $current == US ]] || exit 20
+current=PL; fall_back
+[[ $calls == 1 && $current == 00 ]] || exit 21
+'''
+        with tempfile.TemporaryDirectory() as temporary:
+            result = shell(code, env=dict(os.environ, AURORA_FIRMWARE_ROOT=temporary))
+        self.assertEqual(result.returncode, 0, result.stderr)
 
 if __name__ == '__main__':
     unittest.main()

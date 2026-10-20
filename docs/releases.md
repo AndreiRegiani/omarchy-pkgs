@@ -21,10 +21,10 @@ moments, each one command — and bare `omarchy-release` observes reality
 
 ```bash
 bin/omarchy-release              # shepherd: status + guided next step
-bin/omarchy-release start 4.0.2  # open the train: branch v4-0-2 + staging PR
-                                 # (a minor/major also promotes edge → rc)
-bin/omarchy-release pick         # choose merged PRs to cherry-pick (multi-select)
-bin/omarchy-release rc           # pin the next 4.0.2rcN, build it into rc + edge
+bin/omarchy-release start 4.0.2  # patch: branch v4-0-2 + staging PR
+bin/omarchy-release start 4.5.0  # minor/major: promote edge → rc, cut rc1 from quattro
+bin/omarchy-release pick         # (patch) choose merged PRs to cherry-pick
+bin/omarchy-release rc           # pin the next X.Y.ZrcN, build it into rc + edge
 bin/omarchy-release ship         # tag, final pins built into rc, promote rc → stable,
                                  # draft GitHub release, ISO, website — one swoop
 bin/omarchy-release doctor       # verify credentials/connections up front
@@ -39,8 +39,22 @@ ones, run **Build release candidate** from the Actions tab, or:
 gh workflow run release-rc.yml -R omacom/omarchy-pkgs
 ```
 
-Versions are inferred from branch names (`v4-0-2` ⇒ `4.0.2rcN` ⇒ tag
-`v4.0.2`); `start` is the only place a version is typed. Every command is
+There are two kinds of train, and `start` is the only place a version is
+typed:
+
+- **Patch** (`4.0.2`): takes a subset of quattro by cherry-pick. `start`
+  branches `v4-0-2` from the previous tag, `pick` lands fixes on it, and each
+  `rc` pins the branch head as an untagged `4.0.2rcN`. The version comes from
+  the branch name.
+- **Minor/major** (`4.5.0`): takes everything, so it has no branch and follows
+  quattro itself. Each `rc` tags quattro's tip `v4.5.0-rcN` upstream and pins
+  from that tag; the first is cut by `start`, right after edge is promoted to
+  rc. The rc tags are what mark the train open. `ship` ships the newest
+  candidate even if quattro has moved on since, and drafts its GitHub release
+  with notes generated from the merged PRs, there being no staging PR.
+
+Either way `ship` tags `vX.Y.Z` at the tested commit, which closes the
+train. Every command is
 idempotent — re-runs skip whatever is already done. `ship` refuses to promote
 a commit no RC was cut from. It also waits for the Arch mirror: stable
 packages are only promoted once `stable-mirror.omarchy.org` serves the

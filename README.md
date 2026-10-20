@@ -164,14 +164,18 @@ of the same version, bump `pkgrel`.
 
 ## Where a package is published
 
-`bin/build-matrix` decides, from `.omarchy/package.json`:
+`bin/build-matrix` decides, from `.omarchy/package.json`. The release ring is
+the only choice a package makes:
 
 | Package | Published on merge to |
 |---|---|
-| Default | `edge` |
+| Default (normal ring) | `edge`; `rc` and `stable` by [promotion](#promote-a-channel) |
 | `"release_ring": "fast"` | `edge`, `rc` and `stable` |
-| `"channels": [...]` | never outside the listed channels; the other rows still apply within them |
 | `"pinned": true` (`omarchy`, `omarchy-settings`) | `edge`; `rc` only through a [release candidate](#releases), `stable` by promotion |
+
+Every package reaches every channel. Nothing is held to edge: a package that
+must not reach rc yet is left out of the promotion by naming the ones that
+should go.
 
 A package is published for each architecture in its `arch=()`. An `arch=any`
 package builds once and goes into both architectures' databases.
@@ -303,14 +307,14 @@ gh workflow run promote.yml -R omacom/omarchy-pkgs -f direction="rc -> stable" -
 ```
 
 For each architecture, `bin/promote-channel` moves every pkgbase the source
-channel holds a newer version of, or one the destination lacks, unless its
-recipe on `master` keeps it out:
+channel holds a newer version of, or one the destination lacks. With
+`packages` it moves only those. Otherwise it is everything on the source
+channel, except:
 
 | Held back | Why |
 |---|---|
 | `"release_ring": "fast"` | Already published to `rc` and `stable` at merge |
 | `"pinned": true`, into `rc` | The release pair reaches `rc` through a release; `rc -> stable` carries it |
-| `"channels"` without the destination | Never published there |
 | No recipe on `master` | Retired; [unpublish it](#retire-a-package) instead |
 | Destination ahead on any of its packages | Nothing moves backwards, and a pkgbase moves whole |
 
@@ -560,7 +564,6 @@ Details: [docs/upstream-sources.md](docs/upstream-sources.md),
 | `min_release_age` | Hold a new upstream release back this long (`"24h"`, `"2d"`). A release whose age cannot be proven fails the sync. |
 | `auto_merge` | `true` moves the package's updates from `sync-upstream.yml` (every 6 hours) to `track-branches.yml` (hourly). For packages that follow a moving branch, and for feeds worth shipping within the hour. Needs an upstream declaration. |
 | `release_ring` | `fast`: publish to `rc` and `stable` on merge, not only `edge`. Only for packages that run on any channel's libraries: see [What can be on the fast ring](#what-can-be-on-the-fast-ring). Takes effect with the package's next version: bump `pkgrel` in the same PR. |
-| `channels` | The only channels the package may be published to. `omarchy-dev` is held to `["edge"]` this way. |
 | `pinned` | Version is set per release on the `rc` branch. Used by `omarchy` and `omarchy-settings`. |
 | `rebuild_on` | Packages whose version change forces a rebuild of this one. |
 | `rebuilt_against` | Written by `bin/sync-rebuilds`. Don't edit. |

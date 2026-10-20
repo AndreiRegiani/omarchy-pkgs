@@ -1,8 +1,5 @@
 {
   "source": "local",
-  "channels": [
-    "edge"
-  ],
   "min_release_age": "24h",
   "rebuild_on": [
     "llvm"

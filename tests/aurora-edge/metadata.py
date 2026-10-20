@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check edge-only recipes and their declared compatibility upgrade versions."""
+"""Check the Aurora recipes and their declared compatibility upgrade versions."""
 import json
 import hashlib
 import os
@@ -72,11 +72,10 @@ class EdgeMetadataTests(unittest.TestCase):
                 self.assertIn(old, package[field])
             self.assertTrue(any(p.startswith(old + '=') for p in package['provides']))
 
-    def test_only_edge_and_no_automatic_source_tracking(self):
+    def test_no_automatic_source_tracking(self):
         for name in NAMES:
             with self.subTest(name=name):
                 value = json.loads((ROOT / 'pkgbuilds' / name / '.omarchy/package.json').read_text())
-                self.assertEqual(value['channels'], ['edge'])
                 self.assertFalse(value['sync'])
                 self.assertEqual(value['source'], 'local')
                 self.assertNotIn('release_ring', value)

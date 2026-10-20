@@ -23,6 +23,7 @@ github:HANCORE-linux
 github:kwilczynski
 github:malik-na
 github:ryanrhughes
+github:RyanTheTide
 github:scottjones
 github:spencerbull
 github:tcballard

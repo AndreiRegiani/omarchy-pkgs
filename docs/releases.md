@@ -65,12 +65,16 @@ up front with `--promote-edge`, `--promote-edge="omakade omacharts"` or
 `--no-promote-edge`; `--yes` alone carries everything. Anything held back can
 still be [promoted](#promoting-a-channel) later in the train. Every command is
 idempotent — re-runs skip whatever is already done. `ship` refuses to promote
-a commit no RC was cut from. It also waits for the Arch mirror: stable
-packages are only promoted once `stable-mirror.omarchy.org` serves the
-snapshot rc was tested on (the two `lastsync` stamps match). On release day,
-run `omarchy-mirror-sync-stable-from-rc` on the mirror host first (see
+a commit no RC was cut from. It also waits for the Arch mirrors of every
+architecture: stable packages are only promoted once
+`stable-mirror.omarchy.org` and `arm-stable-mirror.omarchy.org` serve the
+snapshots rc was tested on (each pair's `lastsync` stamps match). On release
+day, run `omarchy-mirror-sync-stable-from-rc` on the mirror host and
+`omarchy-mirror-promote-arm --from omarchy:omarchy-mirror-arm-rc --to
+omarchy:omarchy-mirror-arm-stable` on the ARM mirror host first (see
 omacom/omarchy-mirror), then `ship`. Snapshots only move forward: a
-feature rc takes a fresh one (`omarchy-mirror-sync-rc`), a patch rc keeps
+feature rc takes a fresh one (`omarchy-mirror-sync-rc`, and
+`omarchy-mirror-promote-arm` from the edge ARM bucket), a patch rc keeps
 the one rc and stable have shared since the last ship, and release day
 copies rc's to stable. Stable never syncs from upstream. If it is ever
 newer than rc, `ship` says so: copying rc over it would roll stable back,

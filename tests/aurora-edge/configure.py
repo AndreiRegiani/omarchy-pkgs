@@ -29,12 +29,12 @@ def check(kernel, package, baseline, output):
         report['inputs'] = {
             name: hashlib.sha256((package / name).read_bytes()).hexdigest()
             for name in inputs}
-        fragment = kernel / 'arch/arm64/configs/aurora.config'
+        fragment = kernel / 'arch/arm64/configs/asahi.config'
         report['kernel_fragment_sha256'] = hashlib.sha256(fragment.read_bytes()).hexdigest()
-        shutil.copyfile(fragment, output / 'aurora.config')
+        shutil.copyfile(fragment, output / 'asahi.config')
         baseline_fragments = [baseline / name for name in ('common.config', 'neo.config')]
         if not all(path.exists() for path in baseline_fragments):
-            baseline_fragments = [baseline / 'kernel-aurora.config']
+            baseline_fragments = [baseline / 'kernel-asahi.config']
         report['baseline_inputs'] = {
             path.name: hashlib.sha256(path.read_bytes()).hexdigest()
             for path in [baseline / 'config', *baseline_fragments]}

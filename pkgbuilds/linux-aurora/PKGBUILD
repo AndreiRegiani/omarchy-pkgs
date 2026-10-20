@@ -8,14 +8,14 @@
 # for Macs on the Omarchy edge channel. It reaches rc and stable only after
 # cold-boot qualification on M1 and M2.
 
-_auroraver=7.1.12
-_aurorarel=8
-pkgrel=2
+_auroraver=7.2.10
+_aurorarel=1
+pkgrel=1
 
 # Immutable pin on omacom/linux-aurora (branch integration/aurora). Every bump is a
 # PR that moves _commit; its cold-boot qualification is recorded in
 # the PR's attached qualification evidence before channel publication.
-_commit=60ef6b4cd62a0249c0376e5f199f642f50b645f6
+_commit=1b4997bbab620051e01fb807c6561a483c0f06f6
 
 # Any m1n1 1.6.1 loads these device trees. The Neo's own Stage 2 comes from the
 # image, so the floor stays where M1 and M2 users' m1n1-aurora already meets it.
@@ -38,12 +38,12 @@ makedepends=(
 options=('!strip')
 source=(validate-config.py configure.sh "linux::git+https://github.com/omacom/linux-aurora.git#commit=${_commit}"
         rust-toolchain.toml bindgen-kernel.py config)
-sha256sums=('e54876197d94c291e15e175dffc6e889670f59e828c5762a56cf6ac1a5071c1a'
-            '91b959ba26cd0ddc720d1709484044128e93ad095aac5e770e78043f55291b9d'
+sha256sums=('aca7420a18139474da62a81c77fc6e5c3f25001f872b6e11e18605cd892aa4c3'
+            'b95c0f0ddf106f3861e0e62a746af6a881fb8e0f356a892961f9e86062877400'
             'SKIP'
             '443a9c4613172ea352f49b114818a1d75ab048ec4bd2d75b388a7ab3a8a1f046'
             '84a03d5fea19cae243c89f50c1736c639622d25d4d1de8d7d53ebd8f603c0f62'
-            '0732060bdf4215c4e00e02afaca378044658923831a9bdae31f25a48e21527e5')
+            'a95dd1ef5570bd426fb4d24fd6215b9d80a5a7785f8a6ded1f2621df064db32a')
 
 # Kbuild takes ARCH literally and knows arm64, not aarch64.
 export ARCH=arm64

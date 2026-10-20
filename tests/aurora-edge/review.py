@@ -66,8 +66,8 @@ class KernelRecipeTests(unittest.TestCase):
         helper = (package / 'configure.sh').read_text()
         self.assertNotIn('common.config', recipe)
         self.assertNotIn('neo.config', recipe)
-        self.assertIn('fragments=(arch/arm64/configs/aurora.config)', helper)
-        self.assertIn('python3 "$config_dir/validate-config.py" arch/arm64/configs/aurora.config', helper)
+        self.assertIn('fragments=(arch/arm64/configs/asahi.config)', helper)
+        self.assertIn('python3 "$config_dir/validate-config.py" arch/arm64/configs/asahi.config', helper)
         self.assertFalse(any(line.startswith('CONFIG_') for line in helper.splitlines()))
 
     def test_trusted_keys_cannot_downgrade_the_builtin_sep_driver(self):
@@ -76,7 +76,7 @@ class KernelRecipeTests(unittest.TestCase):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as temporary:
-            fragment = Path(temporary) / 'aurora.config'
+            fragment = Path(temporary) / 'asahi.config'
             fragment.write_text('CONFIG_TRUSTED_KEYS=y\nCONFIG_APPLE_SEP=y\n')
             resolved = Path(temporary) / 'config'
             resolved.write_text(fragment.read_text())
@@ -94,13 +94,31 @@ class KernelRecipeTests(unittest.TestCase):
         spec.loader.exec_module(module)
         with tempfile.TemporaryDirectory() as temporary:
             resolved = Path(temporary) / 'config'
-            fragment = Path(temporary) / 'aurora.config'
+            fragment = Path(temporary) / 'asahi.config'
             fragment.write_text('CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO=m\n')
             resolved.write_text(fragment.read_text())
             module.validate(fragment, resolved)
             resolved.write_text(fragment.read_text().replace(
                 'CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO=m', '# CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO is not set'))
             with self.assertRaisesRegex(ValueError, 'CONFIG_SND_SOC_APPLE_T8140_AOP_AUDIO'):
+                module.validate(fragment, resolved)
+
+    def test_inactive_parent_can_omit_a_requested_disabled_symbol(self):
+        validator = ROOT / 'pkgbuilds/linux-aurora/validate-config.py'
+        spec = importlib.util.spec_from_file_location('disabled_config_check', validator)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        with tempfile.TemporaryDirectory() as temporary:
+            fragment = Path(temporary) / 'asahi.config'
+            fragment.write_text('# CONFIG_TRUSTED_KEYS_TPM is not set\nCONFIG_VIDEO_APPLE_ISP=m\n')
+            resolved = Path(temporary) / 'config'
+            resolved.write_text('CONFIG_VIDEO_APPLE_ISP=m\n')
+            module.validate(fragment, resolved)
+            resolved.write_text('CONFIG_TRUSTED_KEYS_TPM=y\nCONFIG_VIDEO_APPLE_ISP=m\n')
+            with self.assertRaisesRegex(ValueError, 'CONFIG_TRUSTED_KEYS_TPM'):
+                module.validate(fragment, resolved)
+            resolved.write_text('')
+            with self.assertRaisesRegex(ValueError, 'CONFIG_VIDEO_APPLE_ISP'):
                 module.validate(fragment, resolved)
 
     def test_headers_require_resolver_only_when_btf_enabled(self):

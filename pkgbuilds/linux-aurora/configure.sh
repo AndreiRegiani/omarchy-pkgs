@@ -7,7 +7,7 @@ resolve_kernel_config() {
   # defaults owned by the pinned kernel, not a package-maintained driver list.
   local fragments=("$@")
   if (( ${#fragments[@]} == 0 )); then
-    fragments=(arch/arm64/configs/aurora.config)
+    fragments=(arch/arm64/configs/asahi.config)
   fi
   mkdir -p "$output_dir" || return
   cp "$config_dir/config" "$output_dir/.config" || return
@@ -23,7 +23,7 @@ resolve_kernel_config() {
 configure_kernel() {
   local config_dir=$1 output_dir=$2
   resolve_kernel_config "$config_dir" "$output_dir" "${3:-}" || return
-  python3 "$config_dir/validate-config.py" arch/arm64/configs/aurora.config "$output_dir/.config" || return
+  python3 "$config_dir/validate-config.py" arch/arm64/configs/asahi.config "$output_dir/.config" || return
   grep -qx 'CONFIG_RUST=y' "$output_dir/.config" || {
     echo 'linux-aurora requires Rust drivers; toolchain/configuration disabled CONFIG_RUST' >&2
     return 1

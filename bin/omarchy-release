@@ -22,8 +22,8 @@ source "$BUILD_ROOT/helpers/message-helpers.sh"
 source "$BUILD_ROOT/helpers/docker-helpers.sh"
 source "$BUILD_ROOT/helpers/paths.sh"
 
-UPSTREAM_URL="${OMARCHY_UPSTREAM_URL:-https://github.com/basecamp/omarchy.git}"
-UPSTREAM_REPO="${OMARCHY_UPSTREAM_REPO:-basecamp/omarchy}"
+UPSTREAM_URL="${OMARCHY_UPSTREAM_URL:-https://github.com/omacom/omarchy.git}"
+UPSTREAM_REPO="${OMARCHY_UPSTREAM_REPO:-omacom/omarchy}"
 PKGS_REPO="${OMARCHY_PKGS_REPO:-omacom/omarchy-pkgs}"
 SITE_REPO="${OMARCHY_SITE_REPO:-omacom-io/omarchy-site}"
 ISO_REPO="${OMARCHY_ISO_REPO:-omacom-io/omarchy-iso}"
@@ -157,6 +157,9 @@ UPSTREAM_PUSH_URL="${OMARCHY_UPSTREAM_PUSH_URL:-$(ssh_push_url "$UPSTREAM_URL")}
 
 ensure_mirror_clone() {
   if [[ -d "$MIRROR_CLONE" ]]; then
+    # A clone from before the repository moved still names its old URL, and
+    # makepkg refuses a source whose cached clone points elsewhere.
+    git -C "$MIRROR_CLONE" remote set-url origin "$UPSTREAM_URL"
     git -C "$MIRROR_CLONE" fetch --quiet origin
   else
     mkdir -p "$SRCDEST_DIR"
@@ -175,6 +178,7 @@ push_upstream_ref() { # push_upstream_ref <source-sha> <destination-ref>
 
 ensure_work_clone() {
   if [[ -d "$WORK_CLONE" ]]; then
+    git -C "$WORK_CLONE" remote set-url origin "$UPSTREAM_URL"
     git -C "$WORK_CLONE" fetch --quiet origin
   else
     mkdir -p "$SRCDEST_DIR"

@@ -13,7 +13,7 @@ pkgdesc='Beautiful, modern, and opinionated Arch Linux by DHH (quattro branch ti
 # boot stack differs per architecture (see depends_x86_64 / depends_aarch64),
 # and makepkg only honours arch-suffixed arrays on arch-specific packages.
 arch=('x86_64' 'aarch64')
-url='https://github.com/basecamp/omarchy'
+url='https://github.com/omacom/omarchy'
 license=('MIT')
 provides=('omarchy')
 conflicts=('omarchy')
@@ -80,7 +80,7 @@ makedepends=(
 # Source: the pinned quattro commit. Set OMARCHY_SRC=/path/to/checkout to
 # build from a local source tree instead (mirrors omarchy-zsh/omarchy-fish DX);
 # the arrays are emptied below so nothing is downloaded in that case.
-source=("omarchy::git+https://github.com/basecamp/omarchy.git#commit=${_commit}")
+source=("omarchy::git+https://github.com/omacom/omarchy.git#commit=${_commit}")
 sha256sums=('4511729a74e61e1601f6d5c15e2d4d535265b5934f2e9b1a8f2ab6f9da178583')
 if [[ -n "${OMARCHY_SRC:-}" ]]; then
   source=()

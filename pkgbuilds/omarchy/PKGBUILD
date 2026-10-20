@@ -19,7 +19,7 @@ pkgdesc='Beautiful, modern, and opinionated Arch Linux by DHH'
 # boot stack differs per architecture (see depends_x86_64 / depends_aarch64),
 # and makepkg only honours arch-suffixed arrays on arch-specific packages.
 arch=('x86_64' 'aarch64')
-url='https://github.com/basecamp/omarchy'
+url='https://github.com/omacom/omarchy'
 license=('MIT')
 conflicts=('omarchy-dev')
 # Hard depends: only packages whose removal would brick the desktop. The ISO
@@ -95,7 +95,7 @@ if [[ -n "${OMARCHY_SRC:-}" ]]; then
   source=()
   sha256sums=()
 else
-  source=("omarchy::git+https://github.com/basecamp/omarchy.git#commit=${_commit}")
+  source=("omarchy::git+https://github.com/omacom/omarchy.git#commit=${_commit}")
   sha256sums=('f89ae5e85d18d8364f5c89ae05cd0fd170a8c4c93dd62e396b2b0a7fa5be4428')
 fi
 

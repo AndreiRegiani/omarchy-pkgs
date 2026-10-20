@@ -13,7 +13,7 @@ unset OMARCHY_RC_PINS OMARCHY_DEFER_RUNTIME_DEPS
 fixture() {
   local name=$1 version=$2 release=$3
   mkdir -p "$TEST_ROOT/pkgbuilds/$name/.omarchy"
-  printf '{"source":"local","channels":["edge"]}\n' > "$TEST_ROOT/pkgbuilds/$name/.omarchy/package.json"
+  printf '{"source":"local"}\n' > "$TEST_ROOT/pkgbuilds/$name/.omarchy/package.json"
   cat > "$TEST_ROOT/pkgbuilds/$name/PKGBUILD" <<EOF
 pkgname=$name
 pkgver=$version

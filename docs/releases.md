@@ -92,7 +92,7 @@ takes edge back from a newer train's. When `ship` merges the final pins to
 `master`, edge already serves them and the merge's publish builds nothing.
 
 The `omarchy` and `omarchy-settings` packages are released as a pair, always
-built from the same upstream commit of basecamp/omarchy.
+built from the same upstream commit of omacom/omarchy.
 
 **Use `bin/omarchy-release`** — it drives the whole train across all four repositories and
 calls the pin engine below for you.

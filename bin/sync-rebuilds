@@ -21,9 +21,9 @@ OFFICIAL_REPOS=" core extra multilib core-debug extra-debug "
 PUBLISHED_BASE_URL="${OMARCHY_PUBLISHED_BASE_URL:-https://pkgs.omarchy.org}"
 PUBLISHED_MIRRORS=(edge stable)
 
-# Arch Linux ARM has no dated snapshots. This is the same live repository the
-# aarch64 builder resolves; override it only when the builder mirror changes.
-ALARM_BASE_URL="${OMARCHY_ALARM_BASE_URL:-https://fl.us.mirror.archlinuxarm.org/aarch64}"
+# The edge mirror of Arch Linux ARM the aarch64 builder resolves
+# (build/Dockerfile); override it only when the builder mirror changes.
+ALARM_BASE_URL="${OMARCHY_ALARM_BASE_URL:-https://arm-mirror.omarchy.org/aarch64}"
 ALARM_REPOS=(core extra alarm aur)
 
 usage() {

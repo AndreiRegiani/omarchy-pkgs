@@ -22,7 +22,7 @@ moments, each one command — and bare `omarchy-release` observes reality
 ```bash
 bin/omarchy-release              # shepherd: status + guided next step
 bin/omarchy-release start 4.0.2  # patch: branch v4-0-2 + staging PR
-bin/omarchy-release start 4.5.0  # minor/major: promote edge → rc, cut rc1 from quattro
+bin/omarchy-release start 4.5.0  # minor/major: choose what of edge enters rc, cut rc1 from quattro
 bin/omarchy-release pick         # (patch) choose merged PRs to cherry-pick
 bin/omarchy-release rc           # pin the next X.Y.ZrcN, build it into rc + edge
 bin/omarchy-release ship         # tag, final pins built into rc, promote rc → stable,
@@ -48,13 +48,22 @@ typed:
   the branch name.
 - **Minor/major** (`4.5.0`): takes everything, so it has no branch and follows
   quattro itself. Each `rc` tags quattro's tip `v4.5.0-rcN` upstream and pins
-  from that tag; the first is cut by `start`, right after edge is promoted to
-  rc. The rc tags are what mark the train open. `ship` ships the newest
+  from that tag; `start` cuts the first. The rc tags are what mark the train
+  open. `ship` ships the newest
   candidate even if quattro has moved on since, and drafts its GitHub release
   with notes generated from the merged PRs, there being no staging PR.
 
 Either way `ship` tags `vX.Y.Z` at the tested commit, which closes the
-train. Every command is
+train.
+
+Shipping promotes all of rc to stable, so a minor/major usually carries edge
+into rc first: RC testers then run the package set stable users will get.
+`start` asks how much of it to carry: everything, nothing, or a list of
+pkgbases. Carrying nothing keeps rc as it is, which suits a train opened right
+after a promotion, when new edge packages should stay out of the RCs. Answer
+up front with `--promote-edge`, `--promote-edge="omakade omacharts"` or
+`--no-promote-edge`; `--yes` alone carries everything. Anything held back can
+still be [promoted](#promoting-a-channel) later in the train. Every command is
 idempotent — re-runs skip whatever is already done. `ship` refuses to promote
 a commit no RC was cut from. It also waits for the Arch mirror: stable
 packages are only promoted once `stable-mirror.omarchy.org` serves the

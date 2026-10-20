@@ -3,7 +3,8 @@
 #
 # A release train has three human moments, each one command:
 #   start  open the train: a patch gets a release branch + staging PR; a
-#          minor/major advances edge -> rc and cuts its first candidate
+#          minor/major advances edge -> rc (all, some or none of it) and cuts
+#          its first candidate
 #   rc     cut a candidate: pin PKGBUILDs to the train's head, publish to rc
 #          and edge
 #   ship   make it official: final pins, promote rc -> stable, tag, GH release,
@@ -60,8 +61,9 @@ Run with no command to be shepherded through whatever the next step is.
 Commands:
   start [X.Y.Z]      Open a release train. A patch creates branch vX-Y-Z on
                      $UPSTREAM_REPO from the previous tag and opens the
-                     release-notes staging PR. A minor/major promotes edge -> rc
-                     (promote.yml) and cuts its first candidate from $DEV_BRANCH
+                     release-notes staging PR. A minor/major asks whether to
+                     promote edge -> rc (promote.yml), then cuts its first
+                     candidate from $DEV_BRANCH
   pick [pr#|sha ...] (patch) Cherry-pick merged PRs onto the release branch; with
                      no args, choose from a list of merged $DEV_BRANCH PRs
   rc                 Cut the next X.Y.ZrcN, build it into rc and carry it to edge
@@ -77,6 +79,11 @@ Options:
   --yes              Skip confirmation prompts (for scripting/CI)
   --iso / --no-iso   (rc, ship) Build the ISO without asking / skip it
   --no-wait          (rc, ship) Do not poll for the published build
+  --promote-edge[="PKGBASE ..."]
+                     (start, minor/major) Carry edge into rc without asking:
+                     everything, or only the listed pkgbases. --yes alone
+                     carries everything
+  --no-promote-edge  (start, minor/major) Keep rc's packages; carry nothing
   -h, --help         Show this help
 EOF
 }
@@ -345,10 +352,23 @@ trigger_rc_build() { # trigger_rc_build [--wait]
   dispatch_workflow "$@" release-rc.yml
 }
 
-# Carries <from> into <to> on every architecture (promote.yml), and waits for it.
-promote_channel() { # promote_channel <from> <to>
-  print_info "Promoting $1 -> $2 in GitHub Actions..."
-  dispatch_workflow --wait promote.yml -f direction="$1 -> $2"
+# Carries <from> into <to> on every architecture (promote.yml), and waits for
+# it. With pkgbases, only those move.
+promote_channel() { # promote_channel <from> <to> [pkgbases]
+  print_info "Promoting $1 -> $2${3:+ (only $3)} in GitHub Actions..."
+  dispatch_workflow --wait promote.yml -f direction="$1 -> $2" ${3:+-f packages="$3"}
+}
+
+# What start does with edge for a minor/major: "all", "none", or the pkgbases
+# to carry. Reads an interactive reply; empty when it has to ask again.
+edge_promotion_choice() { # edge_promotion_choice <reply>
+  local reply
+  reply=$(xargs <<<"$1")
+  case "$reply" in
+    a | all) echo all ;;
+    n | none) echo none ;;
+    *) echo "$reply" ;;
+  esac
 }
 
 wait_for_published() { # wait_for_published <channel> <version> [timeout-seconds]
@@ -573,10 +593,28 @@ start_dev_train() { # start_dev_train <version>
     confirm "Open the train on the current snapshot anyway?" || exit 1
   fi
 
-  # Minor/major trains ship new edge packages: carry edge forward into rc so
-  # RC testing runs against the set stable users will get. A failed advance
-  # must not pass silently — RCs would test against the previous rc set.
-  if ! promote_channel edge rc; then
+  # A minor/major usually ships what has collected on edge, so RC testing
+  # runs against it: carry edge forward into rc, since shipping promotes all
+  # of rc to stable. Holding some or all of it back keeps rc at what it serves
+  # now, say right after a promotion, so new edge packages stay out of the
+  # RCs. A failed advance must not pass silently — RCs would test against a
+  # set nobody chose.
+  local promote="$PROMOTE_EDGE"
+  if [[ -z "$promote" && "$ASSUME_YES" == true ]]; then
+    promote=all
+  fi
+  while [[ -z "$promote" ]]; do
+    echo "Carry edge's newer packages into rc for this train? Shipping takes rc to stable."
+    echo "  Preview: gh workflow run promote.yml -R $PKGS_REPO -f direction=\"edge -> rc\" -f dry_run=true"
+    local reply
+    read -r -p "[a]ll, [n]one, or the pkgbases to carry: " reply
+    promote=$(edge_promotion_choice "$reply")
+  done
+  local only=""
+  [[ "$promote" == all ]] || only="$promote"
+  if [[ "$promote" == none ]]; then
+    print_info "Holding edge back — rc keeps its current packages"
+  elif ! promote_channel edge rc "$only"; then
     print_error "edge → rc advance did not complete — the train is NOT open"
     echo "Fix the advance (it is idempotent), then re-run: omarchy-release start $version"
     exit 1
@@ -1219,6 +1257,10 @@ cmd_self_test() {
   expect "previous_patch_tag 4.0.2" "$(previous_patch_tag 4.0.2)" "v4.0.1"
   expect "previous_patch_tag 4.0.10" "$(previous_patch_tag 4.0.10)" "v4.0.9"
   expect "rc_tag 4.5.0 3" "$(rc_tag 4.5.0 3)" "v4.5.0-rc3"
+  expect "edge_promotion_choice a" "$(edge_promotion_choice a)" "all"
+  expect "edge_promotion_choice none" "$(edge_promotion_choice ' none ')" "none"
+  expect "edge_promotion_choice pkgbases" "$(edge_promotion_choice '  omakade   omacharts ')" "omakade omacharts"
+  expect "edge_promotion_choice empty asks again" "$(edge_promotion_choice '   ')" ""
 
   # Minor/major trains are found by their rc tags on the dev branch; patch
   # trains by their release branches. This replaces the network reader for
@@ -1295,6 +1337,7 @@ cmd_self_test() {
 COMMAND=""
 ISO_MODE="ask"
 WAIT=true
+PROMOTE_EDGE=""
 ARGS=()
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -1302,6 +1345,9 @@ while [[ $# -gt 0 ]]; do
   --iso) ISO_MODE="yes"; shift ;;
   --no-iso) ISO_MODE="no"; shift ;;
   --no-wait) WAIT=false; shift ;;
+  --promote-edge) PROMOTE_EDGE=all; shift ;;
+  --promote-edge=*) PROMOTE_EDGE=$(edge_promotion_choice "${1#*=}"); shift ;;
+  --no-promote-edge) PROMOTE_EDGE=none; shift ;;
   -h | --help) show_usage; exit 0 ;;
   start | pick | rc | ship | status | doctor | self-test)
     COMMAND="$1"; shift ;;

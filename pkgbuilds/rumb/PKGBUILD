@@ -1,7 +1,7 @@
 # Maintainer: HANCORE
 
 pkgname=rumb
-pkgver=0.1.4
+pkgver=0.1.5
 pkgrel=1
 pkgdesc='Read-only dashboard of pending updates and current problems on Arch and Omarchy'
 arch=('x86_64' 'aarch64')
@@ -17,7 +17,7 @@ optdepends=(
 )
 options=('!debug')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('f326aa7a374cb862fcc0c5012a822302ab7b3fcc98a7bd93846efe5b3e991898')
+sha256sums=('4065f071a3530fb034b8dd13422e91230c06b34aa7c600dbe0a7bb4f860bcab7')
 
 prepare() {
   cd "$pkgname-$pkgver/tui"

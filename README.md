@@ -536,8 +536,10 @@ on named packages.
 - **A package with no upstream declaration or hook gets no upstream updates.** That
   includes the kernels (`linux-omarchy*`, `linux-aurora`): bump
   them by PR.
-- A failed run of any of the three posts to Basecamp when
-  `BASECAMP_CHATBOT_URL` is set.
+- A failed `sync-upstream.yml` or `sync-rebuilds.yml` run posts to Basecamp
+  when `BASECAMP_CHATBOT_URL` is set. `track-branches.yml` runs hourly and
+  posts nothing: a failed run stays red in Actions, and its log names each
+  package that failed and why.
 - Every self-merging path (the three above and `auto-merge-pr.yml`) needs
   the `PKGS_BOT_TOKEN` secret: a personal access token with Contents and Pull
   requests write access to this repository, owned by an account trusted to

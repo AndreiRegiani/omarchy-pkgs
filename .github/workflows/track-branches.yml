@@ -137,20 +137,3 @@ jobs:
         replaces it with the newer tip.
     secrets:
       PKGS_BOT_TOKEN: ${{ secrets.PKGS_BOT_TOKEN }}
-
-  notify:
-    needs: [track, prs]
-    if: ${{ failure() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Notify Basecamp on failure
-        if: ${{ env.BASECAMP_CHATBOT_URL != '' }}
-        env:
-          BASECAMP_CHATBOT_URL: ${{ secrets.BASECAMP_CHATBOT_URL }}
-        run: |
-          curl -s -o /dev/null \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n --arg content \
-              "🔴 <strong>Branch tracking failed</strong><br><a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">View run</a>" \
-              '{content: $content}')" \
-            "$BASECAMP_CHATBOT_URL"

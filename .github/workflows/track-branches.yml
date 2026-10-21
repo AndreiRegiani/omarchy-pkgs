@@ -96,6 +96,9 @@ jobs:
             '
         env:
           PACKAGES: ${{ github.event.inputs.packages }}
+          # The job's own token, read-only and revoked when the job ends. It
+          # lifts the upstream providers' GitHub API calls off the 60-an-hour
+          # unauthenticated limit.
           UPSTREAM_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Group the pins into PRs

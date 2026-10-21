@@ -43,14 +43,25 @@ package_upstream_provider() {
 # run; a page with no stable release at all (drafts and prereleases only)
 # fails the sync instead, because a provider-tracked feed suddenly shipping
 # nothing stable is an anomaly worth a loud error, not a silent skip.
+#
+# Without a token the API allows 60 requests an hour per runner IP, shared
+# with every other job on it. The workflows pass the job's GITHUB_TOKEN as
+# UPSTREAM_GITHUB_TOKEN (1,000 an hour per repository); it goes to the API
+# only, through curl's stdin config so it never lands on a command line.
+# HTTP/1.1 because GitHub's HTTP/2 stream resets fail the fetch outright.
 github_fetch_releases() {
   local repo="$1"
-  curl -fsSL "https://api.github.com/repos/$repo/releases?per_page=100"
+  local url="https://api.github.com/repos/$repo/releases?per_page=100"
+  if [[ -n "${UPSTREAM_GITHUB_TOKEN:-}" ]]; then
+    curl --http1.1 --config - -fsSL "$url" <<<"header = \"Authorization: Bearer $UPSTREAM_GITHUB_TOKEN\""
+  else
+    curl --http1.1 -fsSL "$url"
+  fi
 }
 
 github_fetch_checksums() {
   local repo="$1" tag="$2" asset="$3"
-  curl -fsSL "https://github.com/$repo/releases/download/$tag/$asset"
+  curl --http1.1 -fsSL "https://github.com/$repo/releases/download/$tag/$asset"
 }
 
 git_tags_fetch_refs() {

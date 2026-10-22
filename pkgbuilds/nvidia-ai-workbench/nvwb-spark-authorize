@@ -31,12 +31,14 @@ def configure_docker():
 
     The running daemon is asked rather than the file compared, so a retry after
     an interrupted restart still restarts. A stopped daemon reads the file when
-    it starts, and asking it would start it through its socket.
+    it starts, and asking it would start it through its socket. The query names
+    the local socket so that a Docker context root has selected cannot answer
+    for docker.service.
     """
     subprocess.run(['/usr/bin/nvidia-ctk', 'runtime', 'configure', '--runtime=docker'], check=True)
     if subprocess.run(['/usr/bin/systemctl', 'is-active', '--quiet', 'docker.service']).returncode != 0:
         return
-    info = subprocess.run(['/usr/bin/docker', 'info', '--format', '{{json .Runtimes}}'],
+    info = subprocess.run(['/usr/bin/docker', '--host', 'unix:///run/docker.sock', 'info', '--format', '{{json .Runtimes}}'],
                           capture_output=True, text=True, check=True)
     if 'nvidia' not in json.loads(info.stdout):
         subprocess.run(['/usr/bin/systemctl', 'restart', 'docker.service'], check=True)

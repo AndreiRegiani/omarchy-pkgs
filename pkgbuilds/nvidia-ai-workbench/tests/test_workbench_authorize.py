@@ -64,6 +64,8 @@ class Docker(unittest.TestCase):
 
         def run(command, check=False, capture_output=False, text=False):
             calls.append(command[1] if command[0] == '/usr/bin/systemctl' else command[0])
+            if command[0] == '/usr/bin/docker':
+                self.assertEqual(command[1:3], ['--host', 'unix:///run/docker.sock'])
             if command[1] == 'is-active':
                 return SimpleNamespace(returncode=0 if active else 3)
             if command[0] == '/usr/bin/docker':

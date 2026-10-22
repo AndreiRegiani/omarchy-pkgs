@@ -1,6 +1,6 @@
 # Maintainer: pch <https://github.com/pch>
 pkgname=rawmakase-bin
-pkgver=0.4.1
+pkgver=0.4.2
 pkgrel=1
 pkgdesc="Fast, Lightroom-compatible RAW photo editor (binary release)"
 arch=(x86_64 aarch64)
@@ -23,8 +23,8 @@ conflicts=(rawmakase)
 options=(!strip !debug)
 source_x86_64=("$url/releases/download/v$pkgver/rawmakase-$pkgver-x86_64-linux.tar.gz")
 source_aarch64=("$url/releases/download/v$pkgver/rawmakase-$pkgver-aarch64-linux.tar.gz")
-sha256sums_x86_64=('cd5931da461996f91f9b409ba0f77bab6388568703612965a802aa051288897d')
-sha256sums_aarch64=('09dec50463945582efc74b3c4693cafe8cbbea012257e16715749b2906a319c6')
+sha256sums_x86_64=('bec8b8c002598249fb0361408caa744d649aa080969eef6f066e156fa68dceec')
+sha256sums_aarch64=('2a47b4840b85346d6b92cd8556c63003fbac0dbf73f96f05ee7dbee7cb5134dd')
 
 package() {
   # The release tarball is a ready usr/ tree: a launcher script in /usr/bin,

@@ -1,13 +1,49 @@
 # m1n1-aurora
 
-m1n1 v1.6.1 from aurora-silicon/m1n1 (06a4601a351ebfd1abb6abba9a44c34e40d94776) with RC, NHI and PCIe adapter alias fallbacks for the USB4 tunables, plus the Omarchy boot logos. Aurora's device trees name those aliases `usb4-N-acio`, `usb4-N-nhi` and `usb4-N-pcie-adapter`; stock m1n1 only looks up the `usb4_N_*` names. Latest Aurora m1n1 main is not qualified.
+Build the canonical Aurora bootloader package from an immutable omacom/m1n1
+commit. The current candidate is cf80d9e1fb6830bfea32360ed72d83445b7a7ace
+(merged source PRs #6, #7, #8, #10 and #12), with Clang/lld, Rust 1.89.0 and
+`-Os`. The package's existing 48/128/256 artwork is unchanged. The former USB4
+alias patch is already in the source; the APFS preboot UUID handoff proposed in
+omarchy-pkgs #1485 is also present upstream, so neither needs a local patch.
 
-## Pairing with linux-aurora
+## Existing installations
 
-- It provides `m1n1=1.6.1.aurora1`, which satisfies linux-aurora's `m1n1>=1.6.1`, and conflicts with asahi-alarm's `m1n1`. pacman prefers a package literally named `m1n1` over a provider, so an Aurora transaction names `m1n1-aurora` explicitly and accepts its conflict with `m1n1` (`--ask 4` under `--noconfirm`).
-- It owns `/usr/lib/asahi-boot/m1n1.bin`. asahi-scripts' `95-m1n1-install.hook` runs `update-m1n1` when that file, `/usr/lib/modules/*/dtbs/*` or U-Boot changes. `update-m1n1` writes m1n1, the device trees and gzipped U-Boot into `m1n1/boot.bin` on the system ESP. asahi-alarm's default takes the device trees from the newest `/lib/modules/*-ARCH/dtbs`, which is where linux-aurora installs its Apple DTBs. `/etc/default/update-m1n1` overrides are left alone.
-- Raising linux-aurora's `_m1n1_version` above 1.6.1 needs an m1n1-aurora whose provided version satisfies it, released first.
+The package replaces the downstream `aura` and `m1n1-neo` packages and conflicts
+with the stock `m1n1`; it never automatically replaces the stock package.
+It provides `m1n1=1.6.1.aurora20` for the kernel dependency. An installed
+`m1n1-aurora` upgrades normally; an `aura` installation accepts pacman's named
+replacement transaction. `aura` is removed in the same transaction, leaving
+exactly one provider for the boot checker merged in omarchy-mac-pkgs #52.
+
+Stage 2 remains `/usr/lib/asahi-boot/m1n1.bin`. The existing asahi-scripts hook
+rebuilds `m1n1/boot.bin` on the selected system ESP from the loader, kernel DTBs
+and U-Boot. This package adds no install script, Recovery command or ESP rename.
+`/etc/default/update-m1n1` overrides are left alone.
+
+Stage 1 raw/Mach-O artifacts are available under
+`/usr/share/m1n1-aurora/stage1/`. The old `/usr/share/aura/stage1/aura-raw.bin`
+and `aura.macho` paths remain regular-file copies for installer compatibility.
+Normal package updates never enroll Stage 1; that requires a separate explicit
+installer or Recovery operation. Large Neo images need matched Stage 1 and
+Stage 2 support, so a Stage 2 package upgrade alone is not a Stage 1 migration.
+
+## Coordinated image rollout
+
+Before publishing an image, switch the image builder's package selection and
+signed candidate-set ownership from `aura` to `m1n1-aurora`. Its existing
+`m1n1-aurora -> aura` rewrite must be removed, and its artifact/ownership checks
+must expect `m1n1-aurora`. The compatibility files preserve artifact lookups;
+they do not change that exact package-name selection. Keep accepting already
+installed `aura` in the boot checker. Leave the legacy `aura` recipe unchanged
+until that coordinated rollout; do not select both providers in an image.
 
 ## Qualification
 
-Each bump is cold-boot qualified on the M1 Pro and M2 Max: package installation, the hook rebuilding `boot.bin`, the logo, physical boot and two external displays. A successful build is not hardware acceptance.
+This is an unsigned candidate, not a new hardware-qualified release.
+`build-qualification.json` remains `hardware_tested: false`; the qualification
+validator must pass without `--build-only` before publication. Matched Neo
+Stage 1/Stage 2 boot, repair and upgrade evidence remains required. Before the
+final release pin, resolve the GNU ld orphan-layout follow-up in omacom/m1n1
+#13; the current recipe explicitly uses lld. No Stage 1 enrollment, target
+installation or hardware boot is performed by opening this package PR.

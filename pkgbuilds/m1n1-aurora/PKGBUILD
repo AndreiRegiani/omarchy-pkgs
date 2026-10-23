@@ -1,7 +1,7 @@
 # omacom/m1n1; ordinary updates refresh ESP Stage 2, never enroll Stage 1.
 pkgname=m1n1-aurora
 pkgver=1.6.1.aurora20
-pkgrel=2
+pkgrel=3
 pkgdesc='Omarchy Apple Silicon bootloader from omacom/m1n1'
 arch=('aarch64')
 groups=('omarchy-platform-apple-silicon')
@@ -17,15 +17,15 @@ _commit=76194672cd873db0c32f98037d3b160874ea3863
 source=("m1n1::git+$url.git#commit=$_commit"
         build-qualification.json validate-qualification.py
         bootlogo_48.bin bootlogo_128.bin bootlogo_256.bin)
-sha256sums=('SKIP' '79f59c62fbe194ff1bf8fd2e045931036c618b874ee084afa66441d5958ffa60'
-            '4a65bd3fc0cf791a721934db9b63bee3e451c97b0e02181e691951f49ecf4274'
+sha256sums=('SKIP' 'b4f363add28580089db59068bbd96e74df3ea773f2282073d0b7cb6deba60354'
+            'ff53c060060c03699d631c2e653ef3dbda939ff16fc666cebc74279dbb54bc02'
             '6668050653645711ad7523fe2abeb4cbe85a92c875f3eec754b6db23cea2191c'
             'b19cb017645c7a9068ea0be9b6bb394131d7ca11b28093cf6caa1ffca74b0a4e'
             '9c659b392aacfa31c62c638003d2257abfdbe17919b5c90cde4c4e62f87addab')
 
 prepare() {
-  rustup toolchain install 1.89.0 --profile minimal --target aarch64-unknown-none-softfloat
   [[ $(git -C "$srcdir/m1n1" rev-parse HEAD) == "$_commit" ]]
+  rustup toolchain install 1.89.0 --profile minimal --target aarch64-unknown-none-softfloat
   # Preserve this package's existing artwork; only its source changes.
   for size in 48 128 256; do
     cp "$srcdir/bootlogo_$size.bin" "$srcdir/m1n1/data/bootlogo_$size.bin"

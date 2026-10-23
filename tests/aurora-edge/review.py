@@ -218,8 +218,31 @@ package
 
     def test_prepare_refuses_a_different_source_pin(self):
         recipe = ROOT / 'pkgbuilds/m1n1-aurora/PKGBUILD'
-        result = shell('set -e; source "$1"; srcdir=/nonexistent-fixture; rustup() { :; }; git() { printf "%040d\\n" 0; }; prepare', recipe)
-        self.assertNotEqual(result.returncode, 0)
+        pin = json.loads(recipe.with_name('build-qualification.json').read_text())['source_commit']
+        for actual in (pin, '0' * 40):
+            with self.subTest(pin_matches=actual == pin), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                data = root / 'm1n1/data'
+                data.mkdir(parents=True)
+                for size in (48, 128, 256):
+                    (root / f'bootlogo_{size}.bin').write_bytes(b'new-logo')
+                    (data / f'bootlogo_{size}.bin').write_bytes(b'original-logo')
+                result = shell(r'''set -e
+source "$1"
+srcdir="$2"
+git() { printf '%s\n' "$ACTUAL_PIN"; }
+rustup() { printf 'toolchain touched' > "$srcdir/toolchain"; }
+prepare
+''', recipe, root, env=dict(os.environ, ACTUAL_PIN=actual))
+                if actual == pin:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertTrue((root / 'toolchain').is_file())
+                else:
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    self.assertFalse((root / 'toolchain').exists())
+                for size in (48, 128, 256):
+                    self.assertEqual((data / f'bootlogo_{size}.bin').read_bytes(),
+                                     b'new-logo' if actual == pin else b'original-logo')
 
     def test_canonical_candidate_cannot_claim_hardware_qualification(self):
         path = ROOT / 'pkgbuilds/m1n1-aurora/validate-qualification.py'
@@ -230,6 +253,29 @@ package
         module.validate(record, record['source_commit'], require_hardware=False)
         with self.assertRaisesRegex(ValueError, 'not hardware-qualified'):
             module.validate(record, record['source_commit'])
+
+
+    def test_promotion_requires_each_legacy_boot_pair(self):
+        path = ROOT / 'pkgbuilds/m1n1-aurora/validate-qualification.py'
+        spec = importlib.util.spec_from_file_location('m1n1_promotion_qualification', path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        record = json.loads(path.with_name('build-qualification.json').read_text())
+        gates = ['native_build', 'matched_stage1_stage2_boot', 'repair', 'upgrade',
+                 'legacy_stage1_omacom_stage2_m1_cold_boot',
+                 'legacy_stage1_omacom_stage2_m2_cold_boot',
+                 'aura_stage1_omacom_stage2_m1_cold_boot',
+                 'aura_stage1_omacom_stage2_m2_cold_boot']
+        record['hardware_tested'] = True
+        record['evidence'] = {gate: {'passed': True, 'report': 'synthetic test fixture only'}
+                              for gate in gates}
+        module.validate(record, record['source_commit'])
+        for gate in gates:
+            with self.subTest(missing=gate):
+                partial = dict(record, evidence={k: v for k, v in record['evidence'].items() if k != gate})
+                with self.assertRaisesRegex(ValueError, gate):
+                    module.validate(partial, record['source_commit'])
+
 
 
 class QualificationTests(unittest.TestCase):

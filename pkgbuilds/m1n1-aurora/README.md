@@ -30,20 +30,44 @@ Stage 2 support, so a Stage 2 package upgrade alone is not a Stage 1 migration.
 
 ## Coordinated image rollout
 
-Before publishing an image, switch the image builder's package selection and
-signed candidate-set ownership from `aura` to `m1n1-aurora`. Its existing
+Before merging this package migration, land the image builder change that
+switches package selection and signed candidate-set ownership from `aura`
+to `m1n1-aurora`. Its existing
 `m1n1-aurora -> aura` rewrite must be removed, and its artifact/ownership checks
 must expect `m1n1-aurora`. The compatibility files preserve artifact lookups;
 they do not change that exact package-name selection. Keep accepting already
 installed `aura` in the boot checker. Leave the legacy `aura` recipe unchanged
 until that coordinated rollout; do not select both providers in an image.
+Otherwise a fresh image still installs `aura` and immediately replaces it at
+its first `pacman -Syu` (`--noconfirm` accepts the default-yes replacement).
+This source and provider change also requires explicit maintainer approval.
 
 ## Qualification
 
-This is an unsigned candidate, not a new hardware-qualified release.
-`build-qualification.json` remains `hardware_tested: false`; the qualification
-validator must pass without `--build-only` before publication. Matched Neo
-Stage 1/Stage 2 boot, repair and upgrade evidence remains required.
+Edge is the qualification channel. `package()` uses `--build-only`, so merging
+this PR allows the normal build/publish workflow to publish an edge candidate;
+the JSON record does not automatically block that workflow. The package is
+not qualified for rc/stable promotion: `hardware_tested` remains false.
+Full-mode validation is a manual prerequisite before rc/stable promotion,
+not a CI gate wired into the promotion workflow.
+
+Required hardware matrix (all rows still pending for this exact package):
+
+| Stage 1 retained/enrolled | Stage 2 | Cold-boot systems |
+| --- | --- | --- |
+| Existing aurora-silicon/Asahi Stage 1 from a `m1n1-aurora` install | This omacom package | M1 and M2 |
+| Existing Aura Stage 1, including `BUILTIN_LOGO=aurora` | This omacom package | M1 and M2 |
+| This omacom package, explicitly enrolled | This omacom package | Neo/J700 |
+
+The first two rows exercise the ordinary update path: install only the package,
+let the existing `update-m1n1` hook compose Stage 2 with the installed DTBs and
+U-Boot, and leave Stage 1 unchanged. Record exact Stage 1 identity, package and
+composed-image hashes, cold boot to the desktop, CPU count, internal/external
+displays, and rollback/recovery evidence. No matched-pair-only test substitutes
+for either upgrade row. Native build, repair and upgrade evidence are also
+required by `validate-qualification.py` in full mode; it requires all four
+legacy/Aura M1/M2 cold-boot reports plus the matched Neo report.
+
 The source pin includes the GNU ld orphan-layout fix and linker regression
 tests merged in omacom/m1n1 #13; this recipe explicitly uses lld. No Stage 1
 enrollment, target installation or hardware boot is performed by updating

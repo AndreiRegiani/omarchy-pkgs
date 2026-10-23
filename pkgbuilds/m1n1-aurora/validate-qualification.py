@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check m1n1-aurora candidate metadata, with full qualification required by default."""
+"""Check m1n1-aurora candidate metadata, for manual rc/stable promotion qualification."""
 import argparse
 import json
 from pathlib import Path
@@ -15,12 +15,16 @@ def validate(record, commit, *, require_hardware=True):
     if not record['hardware_tested']:
         if not require_hardware:
             return
-        raise ValueError('m1n1-aurora publication blocked: the exact source pin is not hardware-qualified')
+        raise ValueError('m1n1-aurora promotion blocked: the exact source pin is not hardware-qualified')
     evidence = record.get('evidence', {})
-    for gate in ('native_build', 'matched_stage1_stage2_boot', 'repair', 'upgrade'):
+    for gate in ('native_build', 'matched_stage1_stage2_boot', 'repair', 'upgrade',
+                 'legacy_stage1_omacom_stage2_m1_cold_boot',
+                 'legacy_stage1_omacom_stage2_m2_cold_boot',
+                 'aura_stage1_omacom_stage2_m1_cold_boot',
+                 'aura_stage1_omacom_stage2_m2_cold_boot'):
         item = evidence.get(gate, {})
         if item.get('passed') is not True or not isinstance(item.get('report'), str) or not item['report'].strip():
-            raise ValueError('m1n1-aurora publication blocked: missing passing evidence for ' + gate)
+            raise ValueError('m1n1-aurora promotion blocked: missing passing evidence for ' + gate)
 
 
 if __name__ == '__main__':

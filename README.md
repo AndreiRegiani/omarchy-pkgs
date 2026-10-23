@@ -536,8 +536,15 @@ on named packages.
 - **A package with no upstream declaration or hook gets no upstream updates.** That
   includes the kernels (`linux-omarchy*`, `linux-aurora`): bump
   them by PR.
-- A failed `sync-upstream.yml` or `sync-rebuilds.yml` run posts to Basecamp
-  when `BASECAMP_CHATBOT_URL` is set. `track-branches.yml` runs hourly and
+- `sync-upstream.yml` reports each completed run to Basecamp when
+  `BASECAMP_CHATBOT_URL` is set. Individual package update and PR check
+  failures leave the completed sync green; its notification and Actions
+  summary give counts and link to the affected PRs. PR update results and
+  current PR check results are counted separately: checks still running (or
+  not started yet) are pending, and the sync does not wait for builds.
+  Feed-fetch, setup, and missing-result failures still fail the workflow.
+  A failed `sync-rebuilds.yml` run also posts to Basecamp.
+  `track-branches.yml` runs hourly and
   posts nothing: a failed run stays red in Actions, and its log names each
   package that failed and why.
 - Every self-merging path (the three above and `auto-merge-pr.yml`) needs

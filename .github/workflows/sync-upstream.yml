@@ -115,6 +115,7 @@ jobs:
       groups: ${{ needs.sync.outputs.groups }}
       prefix: auto/sync-upstream
       title: Sync upstream releases
+      report-package-failures: true
       body: |
         Automated update of a package that tracks an upstream vendor release
         feed rather than the AUR.
@@ -128,17 +129,55 @@ jobs:
 
   notify:
     needs: [sync, prs]
-    if: ${{ failure() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      checks: read
+      statuses: read
     steps:
-      - name: Notify Basecamp on failure
-        if: ${{ env.BASECAMP_CHATBOT_URL != '' }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Fetch package results
+        if: ${{ needs.sync.outputs.groups != '' && needs.sync.outputs.groups != '[]' }}
+        # Still produce an actionable summary if a runner or artifact failed.
+        # The summary checks that every expected package result is present.
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: package-pr-result-*
+          path: ${{ runner.temp }}/package-pr-results
+          merge-multiple: true
+
+      - name: Summarize the sync and PR results
+        id: summary
+        uses: actions/github-script@v7
+        env:
+          GROUPS_JSON: ${{ needs.sync.outputs.groups }}
+          SYNC_RESULT: ${{ needs.sync.result }}
+          PRS_RESULT: ${{ needs.prs.result }}
+        with:
+          script: |
+            const summarize = require('./.github/scripts/sync-upstream-summary.cjs');
+            await summarize({ github, context, core,
+              groups: JSON.parse(process.env.GROUPS_JSON || '[]'),
+              syncResult: process.env.SYNC_RESULT,
+              prsResult: process.env.PRS_RESULT,
+              resultsPath: `${process.env.RUNNER_TEMP}/package-pr-results`,
+            });
+
+      - name: Notify Basecamp of the sync results
+        if: ${{ !cancelled() && steps.summary.outputs.content != '' && env.BASECAMP_CHATBOT_URL != '' }}
         env:
           BASECAMP_CHATBOT_URL: ${{ secrets.BASECAMP_CHATBOT_URL }}
+          CONTENT: ${{ steps.summary.outputs.content }}
         run: |
-          curl -s -o /dev/null \
+          curl --fail-with-body --silent --show-error -o /dev/null \
             -H "Content-Type: application/json" \
-            -d "$(jq -n --arg content \
-              "🔴 <strong>Upstream sync failed</strong><br><a href=\"${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\">View run</a>" \
-              '{content: $content}')" \
+            -d "$(jq -n --arg content "$CONTENT" '{content: $content}')" \
             "$BASECAMP_CHATBOT_URL"

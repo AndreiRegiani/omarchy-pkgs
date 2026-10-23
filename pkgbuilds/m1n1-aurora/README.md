@@ -1,8 +1,8 @@
 # m1n1-aurora
 
 Build the canonical Aurora bootloader package from an immutable omacom/m1n1
-commit. The current candidate is cf80d9e1fb6830bfea32360ed72d83445b7a7ace
-(merged source PRs #6, #7, #8, #10 and #12), with Clang/lld, Rust 1.89.0 and
+commit. The current candidate is 76194672cd873db0c32f98037d3b160874ea3863
+(merged source PRs #6, #7, #8, #10, #12 and #13), with Clang/lld, Rust 1.89.0 and
 `-Os`. The package's existing 48/128/256 artwork is unchanged. The former USB4
 alias patch is already in the source; the APFS preboot UUID handoff proposed in
 omarchy-pkgs #1485 is also present upstream, so neither needs a local patch.
@@ -43,7 +43,8 @@ until that coordinated rollout; do not select both providers in an image.
 This is an unsigned candidate, not a new hardware-qualified release.
 `build-qualification.json` remains `hardware_tested: false`; the qualification
 validator must pass without `--build-only` before publication. Matched Neo
-Stage 1/Stage 2 boot, repair and upgrade evidence remains required. Before the
-final release pin, resolve the GNU ld orphan-layout follow-up in omacom/m1n1
-#13; the current recipe explicitly uses lld. No Stage 1 enrollment, target
-installation or hardware boot is performed by opening this package PR.
+Stage 1/Stage 2 boot, repair and upgrade evidence remains required.
+The source pin includes the GNU ld orphan-layout fix and linker regression
+tests merged in omacom/m1n1 #13; this recipe explicitly uses lld. No Stage 1
+enrollment, target installation or hardware boot is performed by updating
+this package PR.

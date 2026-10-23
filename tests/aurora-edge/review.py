@@ -265,7 +265,9 @@ prepare
                  'legacy_stage1_omacom_stage2_m1_cold_boot',
                  'legacy_stage1_omacom_stage2_m2_cold_boot',
                  'aura_stage1_omacom_stage2_m1_cold_boot',
-                 'aura_stage1_omacom_stage2_m2_cold_boot']
+                 'aura_stage1_omacom_stage2_m2_cold_boot',
+                 'aura_stage1_omacom_stage2_m3_cold_boot',
+                 'aura_stage1_omacom_stage2_neo_cold_boot']
         record['hardware_tested'] = True
         record['evidence'] = {gate: {'passed': True, 'report': 'synthetic test fixture only'}
                               for gate in gates}

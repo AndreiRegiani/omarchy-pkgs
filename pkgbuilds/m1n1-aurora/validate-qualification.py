@@ -21,7 +21,9 @@ def validate(record, commit, *, require_hardware=True):
                  'legacy_stage1_omacom_stage2_m1_cold_boot',
                  'legacy_stage1_omacom_stage2_m2_cold_boot',
                  'aura_stage1_omacom_stage2_m1_cold_boot',
-                 'aura_stage1_omacom_stage2_m2_cold_boot'):
+                 'aura_stage1_omacom_stage2_m2_cold_boot',
+                 'aura_stage1_omacom_stage2_m3_cold_boot',
+                 'aura_stage1_omacom_stage2_neo_cold_boot'):
         item = evidence.get(gate, {})
         if item.get('passed') is not True or not isinstance(item.get('report'), str) or not item['report'].strip():
             raise ValueError('m1n1-aurora promotion blocked: missing passing evidence for ' + gate)

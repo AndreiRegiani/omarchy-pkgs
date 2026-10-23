@@ -36,7 +36,7 @@ class EdgeMetadataTests(unittest.TestCase):
     def test_runtime_only_dependencies_remain_in_packages_not_build_environments(self):
         expected = {
             'aura': ['asahi-scripts>=20260127.1', 'uboot-aurora'],
-            'm1n1-aurora': ['asahi-scripts>=20260127.1', 'uboot-aurora'],
+            'm1n1-aurora': ['asahi-scripts>=20260127.1', 'uboot-asahi'],
             'aurora-audio': ['alsa-ucm-conf-aurora', 'pipewire-audio', 'wireplumber',
                              'bankstown', 'lsp-plugins-lv2', 'speakersafetyd', 'speakerguardd'],
             'omarchy-aurora-firmware': ['bash', 'iw', 'kmod', 'omarchy-mac-boot',
@@ -146,6 +146,11 @@ class EdgeMetadataTests(unittest.TestCase):
         self.assertGreaterEqual(int(subprocess.check_output(['vercmp', version, '1.6.1.aurora19'], text=True)), 0)
         self.assertIn('m1n1=' + version, package['provides'])
         self.assertEqual(package['url'], ['https://github.com/omacom/m1n1'])
+        # Upgrading must not force a U-Boot swap: either installed provider satisfies it.
+        self.assertIn('uboot-asahi', package['depends'])
+        self.assertNotIn('uboot-aurora', package['depends'])
+        uboot = srcinfo('uboot-aurora')['uboot-aurora']
+        self.assertTrue(any(p.startswith('uboot-asahi=') for p in uboot['provides']))
         record = json.loads((ROOT / 'pkgbuilds/m1n1-aurora/build-qualification.json').read_text())
         self.assertIn('m1n1::git+https://github.com/omacom/m1n1.git#commit=' + record['source_commit'], package['source'])
         self.assertEqual(len(package['source']), len(package['sha256sums']))

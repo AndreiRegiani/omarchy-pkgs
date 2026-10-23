@@ -17,8 +17,8 @@ _commit=76194672cd873db0c32f98037d3b160874ea3863
 source=("m1n1::git+$url.git#commit=$_commit"
         build-qualification.json validate-qualification.py
         bootlogo_48.bin bootlogo_128.bin bootlogo_256.bin)
-sha256sums=('SKIP' 'b4f363add28580089db59068bbd96e74df3ea773f2282073d0b7cb6deba60354'
-            'ff53c060060c03699d631c2e653ef3dbda939ff16fc666cebc74279dbb54bc02'
+sha256sums=('SKIP' '7df2324b48506b345045d2ffa09ed6cd6dd5921a93be5109670df6d12c513b0b'
+            '43578b83ebea180319b64c9b63377dab6148e997e6f75fd4abcb325484f7ca95'
             '6668050653645711ad7523fe2abeb4cbe85a92c875f3eec754b6db23cea2191c'
             'b19cb017645c7a9068ea0be9b6bb394131d7ca11b28093cf6caa1ffca74b0a4e'
             '9c659b392aacfa31c62c638003d2257abfdbe17919b5c90cde4c4e62f87addab')
@@ -45,7 +45,9 @@ build() {
 
 package() {
   # Runtime dependencies are unavailable in the generic build environment.
-  depends=('asahi-scripts>=20260127.1' 'uboot-aurora')
+  # Virtual uboot-asahi: legacy installs keep stock uboot-asahi, aura installs
+  # keep uboot-aurora (which provides it). Images select uboot-aurora explicitly.
+  depends=('asahi-scripts>=20260127.1' 'uboot-asahi')
   python "$srcdir/validate-qualification.py" --build-only "$srcdir/build-qualification.json" "$_commit"
   install -Dm644 "$srcdir/m1n1/build/m1n1.bin" "$pkgdir/usr/lib/asahi-boot/m1n1.bin"
   install -d "$pkgdir/usr/lib/m1n1-neo"

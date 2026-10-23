@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { mkdtempSync, readFileSync, writeFileSync, rmSync } = require('node:fs');
-const { execFileSync } = require('node:child_process');
+const { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } = require('node:fs');
+const { execFileSync, spawnSync } = require('node:child_process');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 const summarize = require('../.github/scripts/sync-upstream-summary.cjs');
@@ -235,4 +235,79 @@ test('notification and summary escape package names', async t => {
   await f.invoke();
   assert.doesNotMatch(f.summary, /<unsafe/);
   assert.match(f.outputs.content, /&lt;unsafe &amp; &quot;name&quot;&gt;/);
+});
+
+const upstreamWorkflow = readFileSync(join(__dirname, '../.github/workflows/sync-upstream.yml'), 'utf8');
+const scopeStep = upstreamWorkflow.match(/- name: Select the package group[\s\S]*?(?=\n      # Runs in an Arch)/)[0];
+const scopeScript = scopeStep.split('        run: |\n')[1].split('\n')
+  .map(line => line.replace(/^          /, '')).join('\n');
+const cadenceExpression = scopeStep.match(/CADENCE: \$\{\{ (.+) \}\}/)[1];
+const concurrencyExpression = upstreamWorkflow.match(/  group: \$\{\{ (.+) \}\}/)[1];
+const runNameExpression = upstreamWorkflow.match(/run-name: Sync upstream \(\$\{\{ (.+) \}\}\)/)[1];
+// These expressions only use strings, equality, && and ||, whose semantics
+// match between Actions and JavaScript for the event fixtures below.
+const evaluate = (expression, github, inputs) => new Function('github', 'inputs', `return (${expression})`)(github, inputs);
+
+for (const [name, event, inputs, expected] of [
+  ['hourly schedule', { schedule: '35 * * * *' }, {},
+    { cadence: 'hourly', lane: 'auto-merge', prefix: 'auto/track-branches', concurrency: 'track-branches' }],
+  ['six-hourly schedule', { schedule: '20 */6 * * *' }, {},
+    { cadence: 'six-hourly', lane: 'reviewed', prefix: 'auto/sync-upstream', concurrency: 'sync-upstream' }],
+  ['manual hourly run', {}, { cadence: 'hourly' },
+    { cadence: 'hourly', lane: 'auto-merge', prefix: 'auto/track-branches', concurrency: 'track-branches' }],
+  ['manual six-hourly run', {}, { cadence: 'six-hourly' },
+    { cadence: 'six-hourly', lane: 'reviewed', prefix: 'auto/sync-upstream', concurrency: 'sync-upstream' }],
+  ['legacy manual run without a cadence', {}, {},
+    { cadence: 'six-hourly', lane: 'reviewed', prefix: 'auto/sync-upstream', concurrency: 'sync-upstream' }],
+]) {
+  test(`${name} keeps its package selection, existing PR branches and concurrency`, t => {
+    const f = fixture(t, 0);
+    const github = { event };
+    const cadence = evaluate(cadenceExpression, github, inputs);
+    const outputPath = join(f.resultsPath, 'scope-output');
+    execFileSync('bash', ['-e', '-c', scopeScript], {
+      env: { ...process.env, CADENCE: cadence, GITHUB_OUTPUT: outputPath },
+    });
+    const scope = Object.fromEntries(readFileSync(outputPath, 'utf8').trim().split('\n').map(line => line.split('=')));
+    assert.deepEqual(scope, { cadence: expected.cadence, lane: expected.lane, prefix: expected.prefix });
+    assert.equal(evaluate(concurrencyExpression, github, inputs), expected.concurrency);
+    assert.equal(evaluate(runNameExpression, github, inputs), expected.cadence);
+  });
+}
+
+test('invalid cadence fails before selecting packages or PR branches', t => {
+  const f = fixture(t, 0);
+  const outputPath = join(f.resultsPath, 'scope-output');
+  const result = spawnSync('bash', ['-e', '-c', scopeScript], {
+    env: { ...process.env, CADENCE: 'unexpected', GITHUB_OUTPUT: outputPath }, encoding: 'utf8',
+  });
+  assert.notEqual(result.status, 0);
+  assert.match(result.stdout, /Unknown update cadence/);
+  assert.equal(existsSync(outputPath), false);
+});
+
+test('both original schedules have one shared workflow and the duplicate tracker is removed', () => {
+  assert.deepEqual([...upstreamWorkflow.matchAll(/- cron: '([^']+)'/g)].map(match => match[1]).sort(),
+    ['20 */6 * * *', '35 * * * *']);
+  assert.equal(existsSync(join(__dirname, '../.github/workflows/track-branches.yml')), false);
+});
+
+test('an hourly package failure gets the same successful-sync notification and PR link', async t => {
+  const f = fixture(t);
+  f.results[0].pr = 'failure';
+  const result = await f.invoke({ cadence: 'hourly' });
+  assert.equal(result.succeeded, true);
+  assert.match(result.content, /Package group: hourly/);
+  assert.match(result.content, /PR updates: 0 passing, 1 failing/);
+  assert.match(result.content, /pull\/1/);
+});
+
+test('an hourly feed-fetch failure still reports the three successful PR updates', async t => {
+  const f = fixture(t, 3);
+  const result = await f.invoke({ cadence: 'hourly', syncResult: 'failure' });
+  assert.equal(result.succeeded, false);
+  assert.match(result.content, /Package group: hourly/);
+  assert.match(result.content, /PR updates: 3 passing, 0 failing/);
+  assert.match(result.content, /Sync job: failure/);
+  assert.match(result.content, /actions\/runs\/123/);
 });

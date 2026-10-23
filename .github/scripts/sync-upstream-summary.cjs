@@ -67,7 +67,7 @@ async function inspectPR({ github, context, group, result }) {
 }
 
 module.exports = async function summarize({ github, context, core, groups,
-  syncResult, prsResult, resultsPath }) {
+  syncResult, prsResult, resultsPath, cadence }) {
   const runUrl = `${context.serverUrl || 'https://github.com'}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
   const problems = [];
   if (syncResult !== 'success') problems.push(`Sync job: ${syncResult}`);
@@ -109,6 +109,7 @@ module.exports = async function summarize({ github, context, core, groups,
   const succeeded = problems.length === 0;
   const heading = succeeded ? '🟢 Upstream sync ran successfully' : '🔴 Upstream sync failed';
   const content = [`<strong>${heading}</strong>`];
+  if (cadence) content.push(`Package group: ${escape(cadence)}.`);
   if (groups.length) {
     content.push(`PR updates: ${updates.passing} passing, ${updates.failing} failing` +
       (updates.unknown ? `, ${updates.unknown} unknown` : '') + '.');

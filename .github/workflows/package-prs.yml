@@ -1,7 +1,7 @@
 name: Open package PRs
 
-# Shared by the three bot lanes (sync-upstream.yml, sync-rebuilds.yml and
-# track-branches.yml). The caller's sync job rewrites recipes, groups the
+# Shared by the upstream package groups and sync-rebuilds.yml.
+# The caller's sync job rewrites recipes, groups the
 # changes with .github/scripts/package-pr-groups.sh and uploads them as the
 # `package-pins` artifact. This opens or updates one PR per group and arms
 # auto-merge, so every green package lands on its own and only the failures

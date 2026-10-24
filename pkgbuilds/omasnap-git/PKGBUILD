@@ -5,9 +5,9 @@
 # tagged release it follows and below the next one.
 
 pkgname=omasnap-git
-pkgver=1.21.0.r81.g6771b19
-pkgrel=2
-_commit=6771b19de8bcead2b17c16b49f1a8a97445dd8e3
+pkgver=1.22.0.r0.g1e4b891
+pkgrel=1
+_commit=1e4b8911879f74de60f50e41b8b7dd8c7dd94012
 pkgdesc="Native Wayland screenshot and annotation overlay for Hyprland (main branch)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/omacom/omasnap"
@@ -33,7 +33,7 @@ conflicts=('omasnap')
 options=('!debug')
 
 source=("omasnap::git+$url.git#commit=${_commit}")
-sha256sums=('7721f7f1010e610c6435ce7a1e99d8da3b8ceb9ccb1674a28c94a96b8eb411b8')
+sha256sums=('2225e6f9bfd7429aa7021cf527f5ef5c4ea707b81de5c8873db2092a23b2dc7d')
 
 build() {
   cmake -S omasnap -B build -G Ninja \

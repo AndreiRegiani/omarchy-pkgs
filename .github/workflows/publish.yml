@@ -479,9 +479,9 @@ jobs:
           retention-days: 90
 
       # Tell omarchy-mac-installer which aarch64 packages just reached edge;
-      # it decides whether its Mac image needs a rebuild. Opt-in: skipped
-      # with a notice unless MAC_INSTALLER_DISPATCH_TOKEN is set in the
-      # publish environment. Never fails the publish (the packages are
+      # it decides whether its Mac image needs a rebuild. Opt-in: without
+      # MAC_INSTALLER_DISPATCH_TOKEN in the publish environment the script
+      # prints a notice and sends nothing. Never fails the publish (the packages are
       # already out), and sends nothing for x86_64-only or proof publishes.
       # Runs after a failed publish too: edge/aarch64 goes before rc and
       # stable, and the record shows whether its slot landed.

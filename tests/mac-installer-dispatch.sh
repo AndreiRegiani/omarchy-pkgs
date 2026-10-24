@@ -108,3 +108,11 @@ out=$(MAC_INSTALLER_DISPATCH_TOKEN=secret-token run) && [[ $out == *"not the liv
 echo '{"slots": "nope"}' > "$T/record.json"
 out=$(MAC_INSTALLER_DISPATCH_TOKEN=secret-token "$ROOT/bin/mac-installer-dispatch" "$T/record.json") && [[ $out == *"::warning"* ]] \
   && pass "a malformed record warns and exits 0" || fail "malformed: $out"
+
+# release-rc.yml's record: the omarchy pair carried from rc into edge.
+jq -n '{kind: "release-rc", target: "live", result: "success", sources: [], slots: [
+  {mirror: "rc", arch: "aarch64", status: "published", packages: ["omarchy-4.1.0-1-any", "omarchy-settings-4.1.0-1-any"]},
+  {mirror: "edge", arch: "aarch64", status: "published", packages: ["omarchy-4.1.0-1-any", "omarchy-settings-4.1.0-1-any"]}]}' > "$T/record.json"
+out=$(run --dry-run)
+[[ $(jq -c .packages <<<"$out") == '[{"name":"omarchy","version":"4.1.0-1"},{"name":"omarchy-settings","version":"4.1.0-1"}]' ]] \
+  && pass "a release candidate's carry into edge sends the omarchy pair" || fail "release-rc: $out"

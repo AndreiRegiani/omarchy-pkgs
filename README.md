@@ -518,8 +518,10 @@ or an existing test needs a maintainer to merge it.
 ## Automatic updates
 
 Two scheduled workflows open PRs, one per package, through
-`package-prs.yml`. Each PR auto-merges when its build is green, so the open
-ones are the failures. Each workflow takes a `packages` input for a manual run
+`package-prs.yml`. The controller box starts them on systemd timers (see
+[`ci/README.md`](ci/README.md#scheduled-workflows)), not GitHub's `schedule`,
+which ran them hours late. Each PR auto-merges when its build is green, so
+the open ones are the failures. Each workflow takes a `packages` input for a manual run
 on named packages.
 
 | Workflow | Runs | Opens one PR per package on | For |

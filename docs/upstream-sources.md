@@ -90,7 +90,7 @@ every provider, not only branch watches, so it also carries release feeds worth
 checking frequently: the browsers, large vendors' apps, Omacom's own projects,
 and vendor binaries that hold fresh releases with `min_release_age`. `bin/sync-upstream --lane
 reviewed|auto-merge|all` selects a lane; the shared workflow passes the lane
-for the triggering schedule. These historical names select cadence, not
+for the dispatched `cadence`. These historical names select cadence, not
 whether the PR auto-merges. Packages that pin the same branch move in lockstep:
 if one of them fails to update, the run restores the others and reports the group as failed. A
 targeted sync includes the other packages watching that branch, so requesting
@@ -98,7 +98,8 @@ only `omarchy-dev` also updates `omarchy-settings-dev`.
 
 ### Enable unattended branch updates
 
-The schedule already runs in GitHub Actions; no server cron job is needed.
+The builder controller box dispatches both groups on systemd timers
+(`ci/dispatch.sh`), because GitHub's own schedule ran them hours late.
 It uses a personal access token so its PRs trigger builds and its merges trigger
 publishing without manual approval. No GitHub App is required.
 

@@ -1,5 +1,5 @@
 name: Sync Upstream
-run-name: Sync upstream (${{ github.event.schedule == '35 * * * *' && 'hourly' || inputs.cadence || 'six-hourly' }})
+run-name: Sync upstream (${{ inputs.cadence || 'six-hourly' }})
 
 # One updater for releases and branch tips. Packages marked "auto_merge":
 # true are checked hourly; the rest every six hours. Each package keeps its
@@ -13,11 +13,9 @@ run-name: Sync upstream (${{ github.event.schedule == '35 * * * *' && 'hourly' |
 # The PRs and auto-merge use the PAT in PKGS_BOT_TOKEN, so their pushes
 # build without an approval hold and their merges start publish.yml.
 
+# The controller box dispatches both cadences on its own timers
+# (ci/dispatch.sh): GitHub's schedule ran them hours late, or not at all.
 on:
-  schedule:
-    # Keep both cadences off the hour to dodge the scheduling backlog at :00.
-    - cron: '35 * * * *'
-    - cron: '20 */6 * * *'
   workflow_dispatch:
     inputs:
       cadence:
@@ -35,7 +33,7 @@ on:
 # Serialize each package group independently. Keep the old concurrency keys
 # so a tracker run already queued at migration cannot race the new workflow.
 concurrency:
-  group: ${{ (github.event.schedule == '35 * * * *' || inputs.cadence == 'hourly') && 'track-branches' || 'sync-upstream' }}
+  group: ${{ inputs.cadence == 'hourly' && 'track-branches' || 'sync-upstream' }}
   cancel-in-progress: false
 
 jobs:
@@ -66,7 +64,7 @@ jobs:
       - name: Select the package group
         id: scope
         env:
-          CADENCE: ${{ github.event.schedule == '35 * * * *' && 'hourly' || inputs.cadence || 'six-hourly' }}
+          CADENCE: ${{ inputs.cadence || 'six-hourly' }}
         run: |
           case "$CADENCE" in
             hourly) lane=auto-merge; prefix=auto/track-branches ;;

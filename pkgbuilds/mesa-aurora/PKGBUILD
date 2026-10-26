@@ -1,14 +1,21 @@
 pkgbase=mesa-aurora
 pkgname=('mesa-aurora' 'vulkan-aurora')
 epoch=1
-pkgver=26.3.0_devel.20261017.af3d9c6fc84
-pkgrel=2
+# Development versions sort by real UTC date, full reachable commit count,
+# then source hash. Hash-only same-day repins can downgrade existing packages.
+pkgver=26.3.0_devel.20261025.231095.7c86130d26c
+pkgrel=1
 pkgdesc='Aurora Asahi Gallium, Zink and Honeykrisp'
 arch=('aarch64')
 groups=('omarchy-platform-apple-silicon')
-url='https://github.com/aurora-silicon/mesa'
+url='https://github.com/omacom/mesa'
 license=('MIT')
-_commit=af3d9c6fc84f6e5bc6ee23f1eb0b47a5ee466826
+# integration/aurora after omacom/mesa#15: reviewed memory and SPIR-V fixes.
+# Full-history `git rev-list --count` for this pin is 231095 (not first-parent).
+# Its tree matches PR15 head 276f3cd, tested with 104/104 configured Meson tests;
+# that is source/build evidence, not this package's build or hardware qualification.
+_commit=7c86130d26cecd50c7af1ac01ff3fa1705d58045
+_src=mesa-omacom
 # Matched to the DRM UAPI in omacom/linux-aurora integration/aurora.
 # The drivers link neither LLVM nor SPIRV-Tools. Arch Linux ARM moves both
 # (llvm-libs changes soname every major, SPIRV-Tools has no versioned soname),
@@ -21,9 +28,10 @@ makedepends=('git' 'meson' 'ninja' 'python-mako' 'python-yaml' 'python-packaging
              'libx11' 'libxcb' 'libxext' 'libxfixes' 'libxrandr' 'libxshmfence' 'libxxf86vm'
              'wayland' 'wayland-protocols' 'vulkan-headers' 'vulkan-icd-loader' 'libdisplay-info'
              'lm_sensors' 'zlib' 'zstd' 'xcb-util-keysyms')
-source=("mesa::git+$url.git#commit=$_commit"
-        0001-hk-preserve-library-assertion-mode-in-test.patch)
-sha256sums=('SKIP' 'e8684509bed4c22c89064399842ce7646ad1572c176b1794953454f80edbb412')
+# Use a distinct VCS cache name when changing repository origin. Existing
+# makepkg caches named mesa belong to Aurora and reject a different URL.
+source=("$_src::git+$url.git#commit=$_commit")
+sha256sums=('SKIP')
 options=('!debug')
 _options=(-Dplatforms=x11,wayland
   -Dgallium-drivers=asahi,zink,softpipe -Dvulkan-drivers=asahi
@@ -36,12 +44,9 @@ _meson() {
   meson setup --prefix /usr --libexecdir lib --sbindir bin --buildtype plain \
     --wrap-mode nodownload -Db_pie=true -Db_ndebug=true -Dpython.bytecompile=1 "$@"
 }
-prepare() {
-  patch -d mesa -Np1 -i "$srcdir/0001-hk-preserve-library-assertion-mode-in-test.patch"
-}
 build() {
   # The bootstrap builds only three shader tools; the driver build runs tests.
-  _meson mesa tools "${_options[@]}" -Dllvm=enabled -Dbuild-tests=false
+  _meson "$_src" tools "${_options[@]}" -Dllvm=enabled -Dbuild-tests=false
   ninja -C tools -j "${OMARCHY_BUILD_JOBS:-10}" \
     src/compiler/clc/mesa_clc src/compiler/spirv/vtn_bindgen2 src/asahi/clc/asahi_clc
   printf '%s\n' '[binaries]' \
@@ -49,7 +54,7 @@ build() {
     "vtn_bindgen2 = '$srcdir/tools/src/compiler/spirv/vtn_bindgen2'" \
     "asahi_clc = '$srcdir/tools/src/asahi/clc/asahi_clc'" > tools.ini
 
-  _meson mesa build "${_options[@]}" --native-file tools.ini \
+  _meson "$_src" build "${_options[@]}" --native-file tools.ini \
     -Dllvm=disabled -Dspirv-tools=disabled -Dmesa-clc=system -Dprecomp-compiler=system \
     -Dbuild-tests=true
   meson compile -C build -j "${OMARCHY_BUILD_JOBS:-10}"

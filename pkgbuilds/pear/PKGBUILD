@@ -13,13 +13,13 @@ options=('!strip')
 
 _tag=v3.7.0-rc.0
 source=("pear::git+https://github.com/holepunchto/pear.git#tag=$_tag"
-        'disable-self-update.patch')
+        'no-updates.patch')
 sha256sums=('SKIP'
-            '26e6550963e4f7df5137a5a9b2081d27a04ea15433f05bf2ded202de8450f62c')
+            '4d4926a8b3f96de69e0967ef35fbe9e03684f00010d2015c748ef69901347a4a')
 
 prepare() {
   cd pear
-  patch -Np1 --fuzz=0 -i "$srcdir/disable-self-update.patch"
+  patch -Np1 --fuzz=0 -i "$srcdir/no-updates.patch"
 }
 
 build() {
@@ -32,7 +32,8 @@ build() {
 package() {
   cd pear
 
-  install -Dm755 out/make/pear "$pkgdir/usr/bin/pear"
+  install -Dm755 out/make/pear "$pkgdir/usr/lib/pear/pear"
+  install -Dm755 "$startdir/pear" "$pkgdir/usr/bin/pear"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 NOTICE "$pkgdir/usr/share/licenses/$pkgname/NOTICE"
   install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"

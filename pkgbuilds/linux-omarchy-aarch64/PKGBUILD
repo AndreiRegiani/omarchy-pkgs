@@ -194,6 +194,8 @@ source=(
   1102-HID-asus-host-controlled-Fn-lock-for-the-0B05-4B42-keyboard.patch
   1103-HID-asus-disable-OOBE-mode-on-the-ProArt-P14-keyboard-too.patch
   1104-HID-asus-turn-the-keyboard-backlight-off-for-sleep-without-asus-wmi.patch
+  1105-thunderbolt-platform-keep-the-N1x-tunnel-Root-Ports-awake-for-PCIe-tunnels.patch
+  1111-power_wrap-send-the-LPS0-notifications-on-MT8901.patch
   2000-media-iris-reset-AHB-bridge-before-enabling-HW-mode.patch
   2001-ASoC-qcom-q6apm-lpass-dais-Reset-the-codec-DMA-channel-map-in-hw_params.patch
   2002-power-supply-qcom_battmgr-Notify-charger-supplies-of-online-changes.patch
@@ -494,6 +496,8 @@ sha256sums=('87363c24f10e06321eb362765521094e94471f6bff8bce2d6b3e40f39f004953'
             '9b5940534409ec08d285fbb749c7f6ba1649825f346e7ab2a1f975b5dfbcf310'
             'c7b388262ae9f8f9ec2e4f3366eb2d0cbd4d1e93f0bb563b7d3df3a17fd16e74'
             '2efbd3f5d196c31c85a3733707a89cd54f8579756e30f3a16b8ac45ed76b32a6'
+            'ef6fec074ececd3d2a06b59ab1f863516236bfacfabf819b677ca2b0cd393c47'
+            'bd264bd31d5c16bddafc2365a4305eddea93e1d90d50469b1ec9c188836235dd'
             '61260d5828b8d5009df572d5efe50ae359879fb0fbb1bc42d9145dc1947fc8dd'
             '2c2eeccb8ac53d8626494fc4a5f47ab4b7271f68c5318a67fc5f5cd130763671'
             '9f08ec0bb897a496283e8f82a9478bdf42189b739094613ddc0a378b68a12dc7'
@@ -788,6 +792,8 @@ b2sums=('b7fb8c74de664fdd0cd7b42afff2720bda5c4bdb2ffffa80a745c5fecd029c6fe739a3e
         '4d7f30645b60a53f38426ae3b81d63aeaa5131c37de609a29ed6f860b9c8c4af135344adc2ebf34d2578c5b7e24fc2f5953313626133a84dd11899ec8ddf86d4'
         'fe4c9b5c3daa914887734219bf63c651e28981cbc6ea9fdb11316b40e7c6e91d2784fdcc8307e5592eeed85809fb7e0ed284bd4b1e2e0714202f014705e4247d'
         '5c5a6d3a59de1be12520ec544e9f259ceef4c0981f371b363a54b4b4764ffcec198d499059e94b4ebb1bdd0293438ea6b3ea6eff6812698d9c754e98af2a946b'
+        '546b87d9c226c3e2c62c90e91c880b26425348feb4cca0f25b73efa2003b576a601c7f057b30c5dc0c085f4cf0955055664654e3ce53a349d6f10e7f327e74be'
+        '0fa43d77b37e947f09f77e5966ee628110b7b10c3873c0c71cea4421f847527aac7cc63805dd08283cbaae8c4d4b716028bb4b9b5b2f5d4288506132dfdce3a7'
         'dd6c431db54ed291186cbe2ede032d8839caeaef83141d4f2fc4304c8580b426937da40aa29b66d3cbb52fedbc734c0dc6c99e5b5c266badb0d78b194f73c093'
         '6c10ffec36ef7b097a4f0562cb559eaf49bbff31213181c725e6896bfb3f9112bc7a6f127a396ead99792ccd8d93019e3e4090806a417ba50d99711bb309cecb'
         '83491203f17dcf589f99b7e677e7cbeb36d5bd22e05d5bb564a254776fbcfb6020606975bd5c44cb4bc603d7a89162f7c8be2a299758b5680b73aba49f6459e0'

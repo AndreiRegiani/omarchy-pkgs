@@ -1,8 +1,9 @@
 # m1n1-aurora
 
 Build the canonical Aurora bootloader package from an immutable omacom/m1n1
-commit. The current candidate is f5a82fdb6264edd2fb0c02e2d0f750bf33380854
-(merged source PRs #6, #7, #8, #10, #12, #13 and #14), with Clang/lld, Rust 1.89.0 and
+commit. The current candidate is 7ea16980c6dabc1aa0c59e140cbf1f457a579bad
+(merged source PRs #6, #7, #8, #10, #12, #13, #14 and #15, plus omacom/m1n1#18: the
+M3 Airs and M3 Pros hand the display and GPU over by default), with Clang/lld, Rust 1.89.0 and
 `-Os`. The package's existing 48/128/256 artwork is unchanged. The former USB4
 alias patch is already in the source; the APFS preboot UUID handoff proposed in
 omarchy-pkgs #1485 is also present upstream, so neither needs a local patch.
@@ -11,7 +12,7 @@ omarchy-pkgs #1485 is also present upstream, so neither needs a local patch.
 
 The package replaces the downstream `aura` and `m1n1-neo` packages and conflicts
 with the stock `m1n1`; it never automatically replaces the stock package.
-It provides `m1n1=1.6.1.aurora20` for the kernel dependency. An installed
+It provides `m1n1` at its own `pkgver` for the kernel dependency. An installed
 `m1n1-aurora` upgrades normally; an `aura` installation accepts pacman's named
 replacement transaction. `aura` is removed in the same transaction, leaving
 exactly one provider for the boot checker merged in omarchy-mac-pkgs #52.

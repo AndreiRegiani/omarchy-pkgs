@@ -1,0 +1,40 @@
+--- a/sidecar.js
++++ b/sidecar.js
+@@ -10,9 +10 @@
+-const path = require('bare-path')
+-const {
+-  GC,
+-  PLATFORM_CORESTORE,
+-  PLATFORM_DIR,
+-  PLATFORM_LOCK,
+-  LOCALDEV,
+-  UPGRADE
+-} = require('./constants.js')
++const { GC, PLATFORM_CORESTORE, PLATFORM_LOCK } = require('./constants.js')
+@@ -20 +11,0 @@
+-const { version, productName, upgrade } = require('./package.json')
+@@ -67,3 +57,0 @@
+-  const updater = createUpdater()
+-  if (updater) await updater.ready()
+-
+@@ -71 +59 @@
+-    updater,
++    updater: null,
+@@ -77,17 +64,0 @@
+-
+-  function createUpdater() {
+-    if (LOCALDEV || !upgrade) return null
+-    const app = os.execPath()
+-    if (!app) return null
+-
+-    const name = path.basename(app) || productName || 'pear'
+-
+-    return new Sidecar.Updater({
+-      dir: PLATFORM_DIR,
+-      store: corestore,
+-      version,
+-      upgrade: UPGRADE,
+-      app,
+-      name
+-    })
+-  }

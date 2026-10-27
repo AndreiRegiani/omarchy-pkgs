@@ -84,11 +84,13 @@ Patches 1090–1095 are NVIDIA's SAUCE from `Ubuntu-nvidia-7.0-7.0.0-1022.23_24.
 
 NVIDIA's companion watchdog rework (280db0e8cf30) is not carried; it replaces the sbsa_gwdt sleep patch already in `1020` and needs the upstream `early_enable` parameter (1376a013a1, linux-next) first.
 
-The USB4 driver binds only with `power_wrap_drv.usb4_release=0` on the command line. Omarchy sets that together with the PCI hotplug padding.
+The USB4 driver binds only when power_wrap keeps the USB4 resources. `1112` makes that the default on the N1x laptops, which it tells apart from the GB10 desktops (same platform id) by their MediaTek I2C controllers (`NVDA0200`); `power_wrap_drv.usb4_release=` still overrides it. Omarchy still passes the PCI hotplug padding the tunnel root ports need.
 
 `1098` checks for a firmware-present SSPM mailbox before arming the USB4 resource-release hook or probing the SSPM-only ACPI SPI and DSP power drivers. GB10 firmware can describe those devices with SSPM absent. The SPI device-tree path and Power Wrap's other setup are unchanged; a present mailbox that fails still reports its existing errors. This does not enable SPI, audio DSP or USB4 power management on a machine without that interface.
 
 `1111` is NVIDIA's lid-wake fix from NV-Kernels PR #656 (kbutala-nv, LP 2171427), not merged there yet. power_wrap now sends the LPS0 `_DSM` notifications around suspend (3, 7 and 5 in `suspend_noirq`, 6, 9, 8 and 4 in `resume_noirq`), which the EC needs to arm lid wake; Linux only sends them from the x86 s2idle path. Without it, opening the lid did not wake the laptop. In testing on 7.2.8 the first suspend after a lid close woke on its own about 4 s in, on the EC's wake line; logind suspended again 30 s later, and that sleep held for 3 h and woke on lid open.
+
+`1113` makes suspend-to-idle the default on MT8901. The firmware advertises PSCI `SYSTEM_SUSPEND`, so the kernel defaulted to "deep", but the call returns at once and the laptop wakes straight back up. As x86 does for LPS0 systems, it switches when the FADT sets the low-power S0 idle flag, unless `mem_sleep_default=` was given. Omarchy used to pass `mem_sleep_default=s2idle`.
 
 SAUCE that was left out:
 
@@ -96,6 +98,10 @@ SAUCE that was left out:
 - the ACPI `_LPI` hierarchical idle series (SAUCE 0039–0054 and 0067–0069) is deferred to the 7.3 port (see [`UPGRADING-7.3.md`](UPGRADING-7.3.md)). Without it, CPU idle uses the flat LPI states only
 
 Patches 1101–1104 are for the ASUS ProArt P14 (H7407BA) keyboard, 0B05:4B42: a keyboard backlight LED for systems without asus-wmi, host-controlled Fn-lock, turning off the keyboard's OOBE mode, which otherwise keeps fading the backlight in and out, and turning the backlight off for sleep. 7.2.6 brought the upstream hid-asus rework that moves the backlight and Fn-lock writes onto one worker (47669bec44fe), so `1101`, `1102` and `1104` were rebased onto it: the LED class device now lives in the driver data, Fn-lock goes through `asus_kbd_fn_lock_set()`, and the use-after-free fix `1101` used to carry is upstream. The upstream Zenbook A16 support (Fn keys) was `1100` until 7.3, which has it (2061075360).
+
+`1107` boots the ProArt P14 and P16 keyboards with media keys on the top row, as the laptops ship; elsewhere `QUIRK_HID_FN_LOCK` keyboards still boot with function keys, and `hid_asus.fnlock_default=` overrides both. `1108` marks their PixArt haptic touchpads (093A:4F02 on the P14, 093A:4F01 on the P16) as pressure pads. They report each contact's force in Tip Pressure without the Button Type feature that would say so, and libinput read the axis as contact size, so light touches (on the P14, every touch) did nothing. Omarchy used to do both from userspace: `hid_asus.fnlock_default=0` in the initramfs and a libinput quirk.
+
+`1106` hides Windows 2022 from `_OSI` on the ProArt P16 H7607BA and Lenovo Pro 9 15N1X11. Their firmware hides `\_SB.SSPM` (NVDA8400) from an OS that claims it, and without the SSPM the I2C controllers behind the keyboard, touchpad and touchscreen never power on, in the installer too. The kernel's per-machine `_OSI` table was only checked on x86; it is now checked from `acpi_osi_init()` elsewhere, unless `acpi_osi=` was given. The Lenovo drops Windows 2022 only, as tested there. The P16 drops every Windows string, as tested there: ASUS's `\MSOS` falls back from Windows 2022 to Windows 2001, which made the EC send the brightness and volume hotkeys only to ASUS WMI.
 
 ## Snapdragon laptops
 
@@ -168,6 +174,8 @@ The config adds `SPI_HID`, `SPI_HID_CORE`, `SPI_HID_OF`, `VIDEO_IMX681`, `VIDEO_
 On 7.2.8 it went through `olddefconfig` again and took the architecture-independent changes `linux-omarchy` made since 7.2.5-6: `RESET_ATTACK_MITIGATION` and `SWIOTLB_DYNAMIC` off, `IMA_WRITE_POLICY` and `IMA_READ_POLICY` on. New symbols kept their defaults (`ACPI_BATTERY_HOOKS=y`; the new hwmon, haptics and camera drivers stay off). `ARCH_MMAP_RND_BITS` stays at the arm64 maximum of 33: `linux-omarchy` moved x86's value to that architecture's default, which says nothing about arm64.
 
 On 7.3 it went through `olddefconfig` once more, with four modules set by hand. `QCOM_SPMI_ADC5_GEN3` is new to the config because 7.3's `hamoa-pmics.dtsi` wires the X1 PMICs' temperature alarms to the PMK8550's ADC5 Gen3, and without it they stay in deferred probe. `HW_RANDOM_QCOM` is 7.3's name for `CRYPTO_DEV_QCOM_RNG`, which `olddefconfig` would otherwise turn off. `AMD_SBTSI` keeps `SENSORS_SBTSI`, which now depends on it. 7.3 marks the Qualcomm crypto engine (`CRYPTO_DEV_QCE`) as broken on Qualcomm SoCs, so it is gone. New symbols keep their defaults.
+
+`FB_NVIDIA` is off since 7.3-3. `nvidiafb` matches every NVIDIA display controller, the N1x GPU included, and Omarchy had to blacklist it.
 
 `CONFIG_KEXEC_HANDOVER_ENABLE_DEFAULT` is off since `15`, as in NVIDIA's 63bbd5f0d (LP 2168816). With it on, kexec handover set aside its scratch area as CMA on every boot, about 2.1 GiB on the ProArt P14, and long-term page pins (CUDA host-pinned memory, RDMA registrations) could fail with ENOMEM under memory pressure because pinned pages cannot stay in CMA. Omarchy does not use kexec handover; `kho=on` still turns it on.
 
